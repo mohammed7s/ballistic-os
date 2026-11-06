@@ -1,0 +1,510 @@
+From f28d6032d1a92ac41650d72822fdd86349d022e4 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 7 Nov 2026 02:40:58 +0300
+Subject: [PATCH] computercontrol: reserve creation without holding the session
+ registry lock
+
+Construct, revalidate, mutate authorization and close outside mSessions. Use pending reservations and an authorization generation to reject creations invalidated by concurrent edits.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../ComputerControlSessionProcessor.java      | 277 ++++++++++--------
+ .../ComputerControlSessionProcessorTest.java  |  54 ++++
+ 2 files changed, 210 insertions(+), 121 deletions(-)
+
+diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+index d1b73c466..191f63293 100644
+--- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
++++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+@@ -76,6 +76,7 @@ import java.io.PrintWriter;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Objects;
++import java.util.function.Predicate;
+ 
+ /**
+  * Handles creation and lifecycle of {@link ComputerControlSession}s.
+@@ -115,6 +116,23 @@ public final class ComputerControlSessionProcessor {
+     @GuardedBy("mSessions")
+     private final ArraySet<ComputerControlSessionImpl> mSessions = new ArraySet<>();
+ 
++    @GuardedBy("mSessions")
++    private final ArraySet<PendingCreation> mPendingCreations = new ArraySet<>();
++    @GuardedBy("mSessions")
++    private long mAuthorizationGeneration;
++    @GuardedBy("mSessions")
++    private int mAuthorizationUpdates;
++
++    private final class PendingCreation {
++        final long generation;
++        @GuardedBy("mSessions")
++        boolean closed;
++
++        PendingCreation(long generation) {
++            this.generation = generation;
++        }
++    }
++
+     private final Object mHandlerThreadLock = new Object();
+     @GuardedBy("mHandlerThreadLock")
+     @Nullable
+@@ -206,10 +224,12 @@ public final class ComputerControlSessionProcessor {
+             return;
+         }
+ 
+-        synchronized (mSessions) {
+-            if (!checkSessionCreationPreconditionsLocked(request)) {
+-                return;
+-            }
++        if (!hasSessionCapacity()) {
++            dispatchSessionCreationFailed(request, ComputerControlSession.ERROR_SESSION_LIMIT_REACHED);
++            return;
++        }
++        if (!checkSessionCreationPreconditions(request)) {
++            return;
+         }
+ 
+         final ResultReceiver resultReceiver =
+@@ -257,18 +277,24 @@ public final class ComputerControlSessionProcessor {
+                     + " is not allowed to create a session");
+         }
+ 
++        boolean duplicateName = false;
+         synchronized (mSessions) {
+             for (int i = 0; i < mSessions.size(); i++) {
+                 ComputerControlSessionImpl session = mSessions.valueAt(i);
+-                if (Objects.equals(request.ownerPackageName(), session.getOwnerPackageName())
++                if (request.ownerUserId() == session.getOwnerUserId()
++                        && Objects.equals(request.ownerPackageName(), session.getOwnerPackageName())
+                         && Objects.equals(request.name(), session.getName())) {
+-                    ComputerControlStatsController.writeFailedSessionWithStatsReason(
+-                            mPackageManager, request.attributionSource(), request.params(),
+-                            COMPUTER_CONTROL_FAILED_SESSION_REPORTED__REASON__NAME_NOT_UNIQUE);
+-                    throw new IllegalArgumentException("Session name must be unique");
++                    duplicateName = true;
++                    break;
+                 }
+             }
+         }
++        if (duplicateName) {
++            ComputerControlStatsController.writeFailedSessionWithStatsReason(
++                    mPackageManager, request.attributionSource(), request.params(),
++                    COMPUTER_CONTROL_FAILED_SESSION_REPORTED__REASON__NAME_NOT_UNIQUE);
++            throw new IllegalArgumentException("Session name must be unique");
++        }
+ 
+         for (int i = 0; i < request.params().getTargetPackageNames().size(); i++) {
+             final String packageName = request.params().getTargetPackageNames().get(i);
+@@ -346,10 +372,8 @@ public final class ComputerControlSessionProcessor {
+      */
+     public void addAppToAutomatableAppListForAgent(int agentUid, @NonNull String agentPackageName,
+             @NonNull String packageName) {
+-        synchronized (mSessions) {
+-            mAllowlistController.addAppToAutomatableAppListForAgent(agentUid, agentPackageName,
+-                    packageName);
+-        }
++        updateAuthorization(() -> mAllowlistController.addAppToAutomatableAppListForAgent(
++                agentUid, agentPackageName, packageName), null);
+     }
+ 
+     /**
+@@ -358,37 +382,21 @@ public final class ComputerControlSessionProcessor {
+     public void removeAppFromAutomatableAppListForAgent(int agentUid,
+             @NonNull String agentPackageName,
+             @NonNull String packageName) {
+-        synchronized (mSessions) {
+-            mAllowlistController.removeAppFromAutomatableAppListForAgent(agentUid, agentPackageName,
+-                    packageName);
+-            // Close any ongoing automation session for the agent where the agent is automating the
+-            // removed automatable app.
+-            for (int i = mSessions.size() - 1; i >= 0; i--) {
+-                ComputerControlSessionImpl session = mSessions.valueAt(i);
+-                if (session.getOwnerUserId() == UserHandle.getUserId(agentUid)
++        updateAuthorization(() -> mAllowlistController.removeAppFromAutomatableAppListForAgent(
++                agentUid, agentPackageName, packageName),
++                session -> session.getOwnerUserId() == UserHandle.getUserId(agentUid)
+                         && session.getOwnerPackageName().equals(agentPackageName)
+-                        && session.isAutomatingPackage(packageName)) {
+-                    session.close(CLOSE_REASON_USER_INITIATED);
+-                }
+-            }
+-        }
++                        && session.isAutomatingPackage(packageName));
+     }
+ 
+     /**
+      * Clears the automatable app list for the specified agent.
+      */
+     public void clearAutomatableAppListForAgent(int agentUid, @NonNull String agentPackageName) {
+-        synchronized (mSessions) {
+-            mAllowlistController.clearAutomatableAppListForAgent(agentUid, agentPackageName);
+-            // Close any ongoing automation session for the agent
+-            for (int i = mSessions.size() - 1; i >= 0; i--) {
+-                ComputerControlSessionImpl session = mSessions.valueAt(i);
+-                if (session.getOwnerUserId() == UserHandle.getUserId(agentUid)
+-                        && session.getOwnerPackageName().equals(agentPackageName)) {
+-                    session.close(CLOSE_REASON_USER_INITIATED);
+-                }
+-            }
+-        }
++        updateAuthorization(() -> mAllowlistController.clearAutomatableAppListForAgent(
++                agentUid, agentPackageName),
++                session -> session.getOwnerUserId() == UserHandle.getUserId(agentUid)
++                        && session.getOwnerPackageName().equals(agentPackageName));
+     }
+ 
+     /**
+@@ -428,21 +436,10 @@ public final class ComputerControlSessionProcessor {
+      */
+     public void setPackageApprovedToRunAutomationByUser(@NonNull String packageName,
+             @UserIdInt int userId, boolean approved) {
+-        synchronized (mSessions) {
+-            mAllowlistController.setPackageApprovedToRunAutomationByUser(packageName, userId,
+-                    approved);
+-            if (approved) {
+-                return;
+-            }
+-
+-            for (int i = mSessions.size() - 1; i >= 0; i--) {
+-                ComputerControlSessionImpl session = mSessions.valueAt(i);
+-                if (session.getOwnerUserId() == userId
+-                        && session.getOwnerPackageName().equals(packageName)) {
+-                    session.close(CLOSE_REASON_USER_INITIATED);
+-                }
+-            }
+-        }
++        updateAuthorization(() -> mAllowlistController.setPackageApprovedToRunAutomationByUser(
++                packageName, userId, approved),
++                approved ? null : session -> session.getOwnerUserId() == userId
++                        && session.getOwnerPackageName().equals(packageName));
+     }
+ 
+     /**
+@@ -459,23 +456,49 @@ public final class ComputerControlSessionProcessor {
+      */
+     public void setPackageTargetableForAutomationByUser(@NonNull String packageName,
+             @UserIdInt int userId, boolean targetable) {
++        updateAuthorization(() -> mAllowlistController.setPackageTargetableForAutomationByUser(
++                packageName, userId, targetable),
++                targetable ? null : session -> session.getOwnerUserId() == userId
++                        && session.isAutomatingPackage(packageName));
++    }
++
++    private void updateAuthorization(@NonNull Runnable update,
++            @Nullable Predicate<ComputerControlSessionImpl> shouldClose) {
+         synchronized (mSessions) {
+-            mAllowlistController.setPackageTargetableForAutomationByUser(packageName, userId,
+-                    targetable);
+-            if (targetable) {
+-                return;
++            ++mAuthorizationGeneration;
++            ++mAuthorizationUpdates;
++        }
++        try {
++            update.run();
++        } finally {
++            final List<ComputerControlSessionImpl> sessions;
++            synchronized (mSessions) {
++                ++mAuthorizationGeneration;
++                --mAuthorizationUpdates;
++                sessions = new ArrayList<>(mSessions);
+             }
+-
+-            for (int i = mSessions.size() - 1; i >= 0; i--) {
+-                ComputerControlSessionImpl session = mSessions.valueAt(i);
+-                if (session.getOwnerUserId() == userId
+-                        && session.isAutomatingPackage(packageName)) {
+-                    session.close(CLOSE_REASON_USER_INITIATED);
++            if (shouldClose != null) {
++                for (ComputerControlSessionImpl session : sessions) {
++                    if (shouldClose.test(session)) {
++                        session.close(CLOSE_REASON_USER_INITIATED);
++                    }
+                 }
+             }
+         }
+     }
+ 
++    private List<ComputerControlSessionImpl> snapshotSessions() {
++        synchronized (mSessions) {
++            return new ArrayList<>(mSessions);
++        }
++    }
++
++    private boolean hasSessionCapacity() {
++        synchronized (mSessions) {
++            return mSessions.size() + mPendingCreations.size() < MAXIMUM_CONCURRENT_SESSIONS;
++        }
++    }
++
+     private void startHandlerThreadIfNeeded() {
+         synchronized (mHandlerThreadLock) {
+             if (mHandlerThread != null) {
+@@ -490,61 +513,86 @@ public final class ComputerControlSessionProcessor {
+ 
+     private void createSession(@NonNull ComputerControlSessionRequest request,
+             @NonNull List<String> approvedTargets) {
++        final PendingCreation pending;
++        final int reservationError;
+         synchronized (mSessions) {
+-            if (!mAllowlistController.isRequestStillAllowed(request, approvedTargets)) {
+-                dispatchSessionCreationFailed(request, ComputerControlSession.ERROR_PERMISSION_DENIED);
+-                return;
++            if (mAuthorizationUpdates != 0) {
++                reservationError = ComputerControlSession.ERROR_PERMISSION_DENIED;
++                pending = null;
++            } else if (mSessions.size() + mPendingCreations.size() >= MAXIMUM_CONCURRENT_SESSIONS) {
++                reservationError = ComputerControlSession.ERROR_SESSION_LIMIT_REACHED;
++                pending = null;
++            } else {
++                reservationError = 0;
++                pending = new PendingCreation(mAuthorizationGeneration);
++                mPendingCreations.add(pending);
+             }
+-            createSessionLocked(request);
+         }
+-    }
+-
+-    @GuardedBy("mSessions")
+-    private void createSessionLocked(@NonNull ComputerControlSessionRequest request) {
+-        if (!request.appToken().pingBinder()) {
+-            Slog.w(TAG, "Binder is dead for ComputerControlSession " + request.name()
+-                    + ", aborting session creation");
+-            // Don't bother creating the session if the requester is not around anymore.
++        if (pending == null) {
++            dispatchSessionCreationFailed(request, reservationError);
+             return;
+         }
+ 
+-        synchronized (mSessions) {
+-            if (!checkSessionCreationPreconditionsLocked(request)) {
+-                return;
+-            }
+-        }
+-
+-        Slog.d(TAG, "Creating ComputerControlSession " + request.name());
+-        final ComputerControlSessionImpl session;
++        ComputerControlSessionImpl session = null;
++        boolean published = false;
+         final long token = Binder.clearCallingIdentity();
+         try {
++            if (!request.appToken().pingBinder() || !checkSessionCreationPreconditions(request)) {
++                return;
++            }
++            if (!mAllowlistController.isRequestStillAllowed(request, approvedTargets)) {
++                dispatchSessionCreationFailed(request, ComputerControlSession.ERROR_PERMISSION_DENIED);
++                return;
++            }
+             session = new ComputerControlSessionImpl(
+                     mContext, mAllowlistController, request, mVirtualDeviceFactory,
+                     (closedSession) -> {
+                         synchronized (mSessions) {
++                            pending.closed = true;
+                             mSessions.remove(closedSession);
+                         }
+                     }, mReferenceDisplayAddress);
++
++            // Construction calls into WindowManager and other services. Never hold mSessions
++            // across it, policy queries, session closure, or callbacks into clients.
++            if (!checkSessionCreationPreconditions(request)) {
++                return;
++            }
++            final boolean authorized = request.appToken().pingBinder()
++                    && mAllowlistController.isRequestStillAllowed(request, approvedTargets);
+             synchronized (mSessions) {
+-                mSessions.add(session);
++                if (authorized && !pending.closed && mAuthorizationUpdates == 0
++                        && pending.generation == mAuthorizationGeneration) {
++                    mPendingCreations.remove(pending);
++                    mSessions.add(session);
++                    published = true;
++                }
++            }
++            if (!published) {
++                dispatchSessionCreationFailed(request, ComputerControlSession.ERROR_PERMISSION_DENIED);
++                return;
++            }
++            try {
++                request.callback().onSessionCreated(session.getVirtualDisplayId(), session);
++            } catch (RemoteException e) {
++                Slog.e(TAG, "Failed to notify ComputerControlSession " + request.name()
++                        + " about session creation success", e);
++                session.close(CLOSE_REASON_USER_INITIATED);
+             }
+         } catch (RuntimeException e) {
+-            // The virtual device for a ComputerControlSession lives in the system server.
+-            // The app requesting the session may die anytime, invalidating the device.
+-            // If this happens during the initialization of the session it will produce
+-            // an Exception when trying to access the virtual device.
+             Slog.e(TAG, "Exception creating ComputerControlSession " + request.name(), e);
+             dispatchSessionCreationFailed(request, ComputerControlSession.ERROR_UNKNOWN);
+-            return;
+         } finally {
+-            Binder.restoreCallingIdentity(token);
+-        }
+-
+-        try {
+-            request.callback().onSessionCreated(session.getVirtualDisplayId(), session);
+-        } catch (RemoteException e) {
+-            Slog.e(TAG, "Failed to notify ComputerControlSession " + request.name()
+-                    + " about session creation success");
++            synchronized (mSessions) {
++                mPendingCreations.remove(pending);
++            }
++            try {
++                if (session != null && !published) {
++                    session.close(CLOSE_REASON_USER_INITIATED);
++                }
++            } finally {
++                Binder.restoreCallingIdentity(token);
++            }
+         }
+     }
+ 
+@@ -571,15 +619,8 @@ public final class ComputerControlSessionProcessor {
+         return null;
+     }
+ 
+-    @GuardedBy("mSessions")
+-    private boolean checkSessionCreationPreconditionsLocked(
++    private boolean checkSessionCreationPreconditions(
+             @NonNull ComputerControlSessionRequest request) {
+-        if (mSessions.size() >= MAXIMUM_CONCURRENT_SESSIONS) {
+-            dispatchSessionCreationFailed(request,
+-                    ComputerControlSession.ERROR_SESSION_LIMIT_REACHED);
+-            return false;
+-        }
+-
+         // If the caller claims to be running on a virtual device, make sure that this is actually
+         // the case and this is not just an explicitly created device context. If the uid is not
+         // seen on the device they claim to be running on, fallback to default.
+@@ -699,18 +740,14 @@ public final class ComputerControlSessionProcessor {
+         fout.println(indent + "Maximum Concurrent Sessions: " + MAXIMUM_CONCURRENT_SESSIONS);
+         mAllowlistController.dump(fout, indent);
+         fout.println(indent + "Active computer control sessions: ");
+-        synchronized (mSessions) {
+-            for (int i = 0; i < mSessions.size(); i++) {
+-                mSessions.valueAt(i).dump(fd, fout, args);
+-            }
++        for (ComputerControlSessionImpl session : snapshotSessions()) {
++            session.dump(fd, fout, args);
+         }
+     }
+ 
+     public void monitor() {
+-        synchronized (mSessions) {
+-            for (int i = 0; i < mSessions.size(); i++) {
+-                mSessions.valueAt(i).monitor();
+-            }
++        for (ComputerControlSessionImpl session : snapshotSessions()) {
++            session.monitor();
+         }
+         synchronized (mHandlerThreadLock) { /* no-op */ }
+         mAllowlistController.monitor();
+@@ -794,10 +831,11 @@ public final class ComputerControlSessionProcessor {
+      *         automation session; {@code false} otherwise.
+      */
+     public boolean isActiveComputerControlDisplay(int displayId) {
++        final ComputerControlSessionImpl session;
+         synchronized (mSessions) {
+-            ComputerControlSessionImpl session = findSessionByDisplayIdLocked(displayId);
+-            return session != null && session.isSessionActive();
++            session = findSessionByDisplayIdLocked(displayId);
+         }
++        return session != null && session.isSessionActive();
+     }
+ 
+     /**
+@@ -808,13 +846,10 @@ public final class ComputerControlSessionProcessor {
+             @Nullable String notificationTag, @NonNull String packageName) {
+         final ComputerControlSessionImpl.NotificationInfo notificationInfo =
+                 new ComputerControlSessionImpl.NotificationInfo(notificationId, notificationTag);
+-        synchronized (mSessions) {
+-            for (int i = 0; i < mSessions.size(); i++) {
+-                ComputerControlSessionImpl session = mSessions.valueAt(i);
+-                if (Objects.equals(session.getOwnerPackageName(), packageName)
+-                        && Objects.equals(session.getNotificationInfo(), notificationInfo)) {
+-                    return true;
+-                }
++        for (ComputerControlSessionImpl session : snapshotSessions()) {
++            if (Objects.equals(session.getOwnerPackageName(), packageName)
++                    && Objects.equals(session.getNotificationInfo(), notificationInfo)) {
++                return true;
+             }
+         }
+         return false;
+diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
+index c148e5669..39a12a8e1 100644
+--- a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
++++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
+@@ -101,6 +101,8 @@ import org.mockito.Mock;
+ import org.mockito.MockitoAnnotations;
+ 
+ import java.util.List;
++import java.util.concurrent.FutureTask;
++import java.util.concurrent.TimeUnit;
+ 
+ @Presubmit
+ @RunWith(AndroidJUnit4.class)
+@@ -868,6 +870,58 @@ public class ComputerControlSessionProcessorTest {
+                 .onSessionCreated(anyInt(), any());
+     }
+ 
++    @Test
++    public void construction_allowsConcurrentDisplayQuery() throws Exception {
++        when(mVirtualDeviceFactory.createVirtualDevice(any(), any(), any())).thenAnswer(invocation -> {
++            runOnOtherThread(() -> mProcessor.isComputerControlDisplay(VIRTUAL_DISPLAY_ID));
++            return mVirtualDevice;
++        });
++        mProcessor.processNewSessionRequest(
++                mAppThread, ATTRIBUTION_SOURCE, PARAMS, mComputerControlSessionCallback);
++        verify(mComputerControlSessionCallback, timeout(CALLBACK_TIMEOUT_MS))
++                .onSessionCreated(anyInt(), any());
++    }
++
++    @Test
++    public void withdrawalDuringConstruction_discardsSessionWithoutPublishing() throws Exception {
++        when(mVirtualDeviceFactory.createVirtualDevice(any(), any(), any())).thenAnswer(invocation -> {
++            runOnOtherThread(() -> mProcessor.setPackageTargetableForAutomationByUser(
++                    TARGET_PACKAGE, CALLING_USER_ID, false));
++            return mVirtualDevice;
++        });
++        // Leave the mocked allowlist recheck true: the generation must still invalidate creation.
++        mProcessor.processNewSessionRequest(
++                mAppThread, ATTRIBUTION_SOURCE, PARAMS, mComputerControlSessionCallback);
++        verify(mComputerControlSessionCallback, timeout(CALLBACK_TIMEOUT_MS))
++                .onSessionCreationFailed(ComputerControlSession.ERROR_PERMISSION_DENIED);
++        verify(mVirtualDevice, timeout(CALLBACK_TIMEOUT_MS)).close();
++        verify(mComputerControlSessionCallback, never()).onSessionCreated(anyInt(), any());
++        assertFalse(mProcessor.isComputerControlSession(DEVICE_ID));
++    }
++
++    @Test
++    public void failedConstruction_releasesReservation() throws Exception {
++        when(mVirtualDeviceFactory.createVirtualDevice(any(), any(), any()))
++                .thenThrow(new IllegalStateException("construction failed"))
++                .thenReturn(mVirtualDevice);
++        mProcessor.processNewSessionRequest(
++                mAppThread, ATTRIBUTION_SOURCE, PARAMS, mComputerControlSessionCallback);
++        verify(mComputerControlSessionCallback, timeout(CALLBACK_TIMEOUT_MS))
++                .onSessionCreationFailed(ComputerControlSession.ERROR_UNKNOWN);
++        mProcessor.processNewSessionRequest(
++                mAppThread, ATTRIBUTION_SOURCE, PARAMS, mComputerControlSessionCallback);
++        verify(mComputerControlSessionCallback, timeout(CALLBACK_TIMEOUT_MS))
++                .onSessionCreated(anyInt(), any());
++    }
++
++    private static void runOnOtherThread(Runnable action) throws Exception {
++        FutureTask<Void> task = new FutureTask<>(action, null);
++        Thread thread = new Thread(task, "computer-control-lock-test");
++        thread.setDaemon(true);
++        thread.start();
++        task.get(CALLBACK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
++    }
++
+     @Test
+     public void withdrawnBeforeCreation_failsWithoutCreatingDevice() throws Exception {
+         when(mAllowlistController.isRequestStillAllowed(any(), any())).thenReturn(false);
+-- 
+2.53.0
+

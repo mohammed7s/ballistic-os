@@ -425,3 +425,68 @@ Verification performed on 7 November 2026: all eight patches applied with `git a
 exactly matched its implementation clone. `git diff --check` passed for all three series;
 the edited Settings strings parsed as XML. These checks do not establish compilation or runtime
 correctness. Verification checkout: `~/src/ballistic-os-work/verify/followup-uf1zhxud/`.
+
+## 10. Second review follow-up (7 November 2026; design before implementation)
+
+The second review found a lock inversion introduced by patch 7, plus two remaining server-boundary
+checks. Add three ordered frameworks/base patches after 0003:
+
+1. **Creation reservation and authorization generation.** Keep only registry/counter bookkeeping
+   under `mSessions`; do not construct, query policy/services, mutate allowlists, close sessions,
+   or call clients while holding it. Reserve capacity before construction, capture an authorization
+   generation, recheck outside the lock before publication, then publish only if the generation is
+   unchanged and no edit is in progress. Edits invalidate in-flight creations before mutating state;
+   rejected constructed sessions are closed outside the lock. This removes the reverse-lock cycle
+   with WindowManager Back handling while preserving withdrawal during construction.
+2. **Validate incoming parameters.** Apply the version, notification (including nested notification
+   content), attribution and target-limit requirements at the service boundary, independent of
+   whether the caller used the Builder. Exercise malformed inputs constructed through Parcel.
+3. **Recheck mutable authorization.** Use captured UID/package/user for permission and assistant-role
+   checks, the Computer Control AppOp, managed-device policy, current grants and creation conditions
+   before construction and again before publication. Retain one-time consent only for the current
+   dialog's targets; it cannot override an explicit AppOp denial.
+
+Files: `ComputerControlSessionProcessor.java`, `ComputerControlAllowlistController.java`, and their
+regression tests. No changes to hardening, device policy definitions, signing, sepolicy or the
+Settings UI. Tests must exercise reentrant display queries from another thread, revocation during
+construction, crafted Parcels, and authorization changes while consent is pending. Application
+checks remain distinct from compiling and running Android tests.
+
+The lock implementation in §9 is superseded by this section. `mSessions` protects registry and
+reservation bookkeeping only; permission-store edits invalidate the generation before and after
+mutation. A concurrent edit conservatively rejects an in-progress creation even if it concerns
+another user; active-session closure remains scoped to the affected user. Existing debug-super-agent
+and initially authorized shell/test-only exceptions remain. Losing permission does not reclassify a
+normal pending request as a test request.
+
+Source checks (7 November 2026): WindowManager Back takes `mGlobalLock` in
+`services/core/java/com/android/server/wm/ActivityClientController.java:1966` and reaches Computer
+Control display queries through `isOnComputerControlDisplay` at :1994. The revised processor keeps
+both precondition queries and construction outside `mSessions`; methods called under it read only
+session metadata (`ComputerControlSessionImpl.java:574-594`). Final patched processor:
+`validateSessionParams` :261, `updateAuthorization` :501, `isRequestStillAuthorized` :550,
+`createSession` :565. The allowlist controller rechecks captured permissions/role at :657.
+
+Additional first-build checks:
+- [ ] Run `atest VirtualDeviceServicesTests:ComputerControlSessionProcessorTest
+      VirtualDeviceServicesTests:ComputerControlAllowlistControllerTest` (16 new regression tests
+      across these three patches, including crafted Parcels and concurrent registry access).
+- [ ] Race root-activity Back against creation and revocation; capture traces if either stalls.
+- [ ] Withdraw the assistant role, either permission, the AppOp, or device-policy eligibility while
+      consent is open; approving once must not override withdrawal. Repeat during construction.
+- [ ] Verify valid version-5 sessions post a notification, malformed requests create no device,
+      and discarded constructions release their device and reservation.
+
+Policy checks read several Android services; they are not a transaction across those services.
+They run before construction and immediately before publication. The generation check separately
+covers overlapping permission-store edits made through the processor. Existing runtime lifecycle
+watchers remain in force. Compilation, Android test execution and device stress tests are pending.
+
+Verification performed on 7 November 2026: the full eleven-patch series applied with `git am` to
+fresh shallow clones of tag `2026110200`, with all resulting trees matching the implementation
+clones and all applied source diffs passing `git diff --check`. After adjusting the existing
+policy-query test expectations, the final frameworks series was reapplied to a further fresh clone:
+`~/src/ballistic-os-work/verify/second-review-final-gdpe3khz/platform_frameworks_base`, tree
+`0ef7ff77cf4ac2f5136fbb246dd45b10a3632922`. Release/Settings verification is in
+`~/src/ballistic-os-work/verify/second-review-ulmmwpce/`. These are application/source checks, not
+compilation or executed Android tests.

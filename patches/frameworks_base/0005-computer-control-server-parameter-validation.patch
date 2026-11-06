@@ -1,0 +1,237 @@
+From 3fa3fc0d8b046ffab13451add6b972f5d249cfa6 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 7 Nov 2026 02:42:39 +0300
+Subject: [PATCH] computercontrol: validate parcelled session parameters at the
+ service boundary
+
+Enforce v5 notification content, target count and attribution constraints independently of client-side builders. Add crafted-Parcel regression cases and update supported-version test fixtures.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../ComputerControlSessionProcessor.java      |  33 ++++++
+ .../ComputerControlSessionProcessorTest.java  | 105 +++++++++++++++++-
+ 2 files changed, 134 insertions(+), 4 deletions(-)
+
+diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+index 191f63293..ab8fb63e5 100644
+--- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
++++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+@@ -255,7 +255,40 @@ public final class ComputerControlSessionProcessor {
+         }
+     }
+ 
++    private static void validateSessionParams(@NonNull ComputerControlSessionParams params) {
++        if (params.getTargetComputerControlVersion() < MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17) {
++            throw new IllegalArgumentException("Computer Control version 5 or later is required");
++        }
++        if (params.getName() == null || params.getName().isEmpty()) {
++            throw new IllegalArgumentException("Session name is required");
++        }
++        final ComputerControlSessionParams.NotificationParams notification =
++                params.getNotificationParams();
++        if (notification == null || notification.getNotification() == null) {
++            throw new IllegalArgumentException("A session notification is required");
++        }
++        // Parcelable constructors do not run Builder validation, including nested objects.
++        new ComputerControlSessionParams.NotificationParams.Builder(
++                notification.getNotification(), notification.getNotificationId()).build();
++        for (String target : params.getTargetPackageNames()) {
++            if (target == null || target.isEmpty()) {
++                throw new IllegalArgumentException("Target package names must not be empty");
++            }
++        }
++        // Reuse the API's constraints, notably attribution and the six-target limit.
++        new ComputerControlSessionParams.Builder()
++                .setName(params.getName())
++                .setTargetComputerControlVersion(params.getTargetComputerControlVersion())
++                .setTargetPackageNames(params.getTargetPackageNames())
++                .setPreviewIntent(params.getPreviewIntent())
++                .setAppInteractionAttribution(params.getAppInteractionAttribution())
++                .setCompanionDeviceId(params.getCompanionDeviceId())
++                .setNotificationParams(notification)
++                .build();
++    }
++
+     private void validateRequest(@NonNull ComputerControlSessionRequest request) {
++        validateSessionParams(request.params());
+         // TODO: b/445856399 - Support managed profiles.
+         Binder.withCleanCallingIdentity(() -> {
+             if (!isComputerControlAvailableForUser(request.ownerUserId())) {
+diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
+index 39a12a8e1..cf7bdd392 100644
+--- a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
++++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
+@@ -65,6 +65,7 @@ import android.content.pm.UserInfo;
+ import android.graphics.Color;
+ import android.hardware.display.VirtualDisplay;
+ import android.os.Binder;
++import android.os.Parcel;
+ import android.os.RemoteException;
+ import android.os.ResultReceiver;
+ import android.os.UserHandle;
+@@ -147,20 +148,20 @@ public class ComputerControlSessionProcessorTest {
+                     .build();
+     private static final ComputerControlSessionParams PARAMS =
+             new ComputerControlSessionParams.Builder()
++                    .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
++                    .setNotificationParams(NOTIFICATION_PARAMS)
+                     .setName(ComputerControlSessionImplTest.class.getSimpleName())
+                     .setTargetPackageNames(List.of(TARGET_PACKAGE))
+-                    .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
+                     .setAppInteractionAttribution(APP_INTERACTION_ATTRIBUTION)
+-                    .setNotificationParams(NOTIFICATION_PARAMS)
+                     .build();
+     private static final ComputerControlSessionParams CROSS_DEVICE_PARAMS =
+             new ComputerControlSessionParams.Builder()
++                    .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
++                    .setNotificationParams(NOTIFICATION_PARAMS)
+                     .setName(ComputerControlSessionImplTest.class.getSimpleName())
+                     .setTargetPackageNames(List.of(TARGET_PACKAGE))
+-                    .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
+                     .setAppInteractionAttribution(APP_INTERACTION_ATTRIBUTION)
+                     .setCompanionDeviceId(COMPANION_DEVICE_ID)
+-                    .setNotificationParams(NOTIFICATION_PARAMS)
+                     .build();
+ 
+     @Rule
+@@ -562,8 +563,11 @@ public class ComputerControlSessionProcessorTest {
+                 eq(ANOTHER_TARGET_PACKAGE), eq(OWNER_PACKAGE_NAME), any())).thenReturn(false);
+ 
+         ComputerControlSessionParams params = new ComputerControlSessionParams.Builder()
++                .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
++                .setNotificationParams(NOTIFICATION_PARAMS)
+                 .setName(ComputerControlSessionImplTest.class.getSimpleName())
+                 .setTargetPackageNames(List.of(TARGET_PACKAGE, ANOTHER_TARGET_PACKAGE))
++                .setAppInteractionAttribution(APP_INTERACTION_ATTRIBUTION)
+                 .build();
+         assertThrows(IllegalArgumentException.class, () -> {
+             mProcessor.processNewSessionRequest(
+@@ -577,9 +581,12 @@ public class ComputerControlSessionProcessorTest {
+                 eq(ANOTHER_TARGET_PACKAGE), eq(OWNER_PACKAGE_NAME), any())).thenReturn(true);
+ 
+         ComputerControlSessionParams params = new ComputerControlSessionParams.Builder()
++                .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
++                .setNotificationParams(NOTIFICATION_PARAMS)
+                 .setName(ComputerControlSessionImplTest.class.getSimpleName())
+                 .setTargetPackageNames(List.of(TARGET_PACKAGE, ANOTHER_TARGET_PACKAGE))
+                 .setAppInteractionAttribution(APP_INTERACTION_ATTRIBUTION)
++                .setAppInteractionAttribution(APP_INTERACTION_ATTRIBUTION)
+                 .build();
+         mProcessor.processNewSessionRequest(
+                 mAppThread, ATTRIBUTION_SOURCE, params, mComputerControlSessionCallback);
+@@ -857,8 +864,11 @@ public class ComputerControlSessionProcessorTest {
+     }
+ 
+     @Test
++    @DisableFlags(android.app.appfunctions.flags.Flags.FLAG_ENABLE_APP_INTERACTION_API)
+     public void appInterActionAttribution_notProvided_notEnforced() throws Exception {
+         ComputerControlSessionParams params = new ComputerControlSessionParams.Builder()
++                .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
++                .setNotificationParams(NOTIFICATION_PARAMS)
+                 .setName(PARAMS.getName())
+                 .setTargetPackageNames(PARAMS.getTargetPackageNames())
+                 .build();
+@@ -870,6 +880,91 @@ public class ComputerControlSessionProcessorTest {
+                 .onSessionCreated(anyInt(), any());
+     }
+ 
++    @Test
++    public void craftedParcel_missingNotification_isRejected() {
++        assertInvalidParcel(parcelledParams(null, List.of(TARGET_PACKAGE),
++                APP_INTERACTION_ATTRIBUTION));
++    }
++
++    @Test
++    public void craftedParcel_nullNestedNotification_isRejected() {
++        assertInvalidParcel(parcelledParams(parcelledNotification(null), List.of(TARGET_PACKAGE),
++                APP_INTERACTION_ATTRIBUTION));
++    }
++
++    @Test
++    public void craftedParcel_nonPromotableNotification_isRejected() {
++        assertInvalidParcel(parcelledParams(parcelledNotification(new Notification()),
++                List.of(TARGET_PACKAGE), APP_INTERACTION_ATTRIBUTION));
++    }
++
++    @Test
++    public void craftedParcel_tooManyTargets_isRejected() {
++        assertInvalidParcel(parcelledParams(NOTIFICATION_PARAMS,
++                List.of("one", "two", "three", "four", "five", "six", "seven"),
++                APP_INTERACTION_ATTRIBUTION));
++    }
++
++    @Test
++    public void craftedParcel_emptyTarget_isRejected() {
++        assertInvalidParcel(parcelledParams(NOTIFICATION_PARAMS, List.of(""),
++                APP_INTERACTION_ATTRIBUTION));
++    }
++
++    @Test
++    @EnableFlags(android.app.appfunctions.flags.Flags.FLAG_ENABLE_APP_INTERACTION_API)
++    public void craftedParcel_missingRequiredAttribution_isRejected() {
++        assertInvalidParcel(parcelledParams(NOTIFICATION_PARAMS, List.of(TARGET_PACKAGE), null));
++    }
++
++    @Test
++    public void craftedParcel_validParams_createsSession() throws Exception {
++        mProcessor.processNewSessionRequest(mAppThread, ATTRIBUTION_SOURCE,
++                parcelledParams(NOTIFICATION_PARAMS, List.of(TARGET_PACKAGE),
++                        APP_INTERACTION_ATTRIBUTION), mComputerControlSessionCallback);
++        verify(mComputerControlSessionCallback, timeout(CALLBACK_TIMEOUT_MS))
++                .onSessionCreated(anyInt(), any());
++    }
++
++    private void assertInvalidParcel(ComputerControlSessionParams params) {
++        assertThrows(IllegalArgumentException.class, () -> mProcessor.processNewSessionRequest(
++                mAppThread, ATTRIBUTION_SOURCE, params, mComputerControlSessionCallback));
++        verify(mVirtualDeviceFactory, never()).createVirtualDevice(any(), any(), any());
++    }
++
++    private static ComputerControlSessionParams parcelledParams(
++            ComputerControlSessionParams.NotificationParams notification,
++            List<String> targets, AppInteractionAttribution attribution) {
++        Parcel parcel = Parcel.obtain();
++        try {
++            parcel.writeString8("crafted");
++            parcel.writeStringList(targets);
++            parcel.writeTypedObject(null, 0); // Preview intent
++            parcel.writeTypedObject(attribution, 0);
++            parcel.writeInt(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17);
++            parcel.writeTypedObject(null, 0); // Companion device
++            parcel.writeTypedObject(notification, 0);
++            parcel.setDataPosition(0);
++            return ComputerControlSessionParams.CREATOR.createFromParcel(parcel);
++        } finally {
++            parcel.recycle();
++        }
++    }
++
++    private static ComputerControlSessionParams.NotificationParams parcelledNotification(
++            Notification notification) {
++        Parcel parcel = Parcel.obtain();
++        try {
++            parcel.writeTypedObject(notification, 0);
++            parcel.writeInt(NOTIFICATION_ID);
++            parcel.writeString8(NOTIFICATION_TAG);
++            parcel.setDataPosition(0);
++            return ComputerControlSessionParams.NotificationParams.CREATOR.createFromParcel(parcel);
++        } finally {
++            parcel.recycle();
++        }
++    }
++
+     @Test
+     public void construction_allowsConcurrentDisplayQuery() throws Exception {
+         when(mVirtualDeviceFactory.createVirtualDevice(any(), any(), any())).thenAnswer(invocation -> {
+@@ -1031,6 +1126,8 @@ public class ComputerControlSessionProcessorTest {
+ 
+     private ComputerControlSessionParams generateUniqueParams(int index) {
+         return new ComputerControlSessionParams.Builder()
++                .setTargetComputerControlVersion(MIN_COMPUTER_CONTROL_VERSION_FOR_ANDROID_17)
++                .setNotificationParams(NOTIFICATION_PARAMS)
+                 .setName(PARAMS.getName() + index)
+                 .setTargetPackageNames(PARAMS.getTargetPackageNames())
+                 .setAppInteractionAttribution(PARAMS.getAppInteractionAttribution())
+-- 
+2.53.0
+

@@ -1,6 +1,6 @@
 # Patches
 
-The Computer Control gate for Ballistic for GrapheneOS: eight patches, one commit each, made with
+The Computer Control gate for Ballistic for GrapheneOS: eleven patches, one commit each, made with
 `git format-patch` against GrapheneOS tag **`2026110200`**. Design, privacy argument, verified
 facts and the first-build checklist: [`../docs/patches.md`](../docs/patches.md).
 
@@ -18,12 +18,18 @@ Status: applied cleanly with `git am` to fresh clones of the tag; not yet compil
 | 6 | `build_release/` | `platform_build_release` | `build/release` | `0003-computer-control-version-five.patch` | 26 | 1 file, +6 |
 | 7 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0003-computer-control-revocation-hardening.patch` | 742 | 7 files, +296 −53 |
 | 8 | `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` | `0002-computer-control-protected-targets.patch` | 53 | 2 files, +6 −1 |
+| 9 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0004-computer-control-creation-reservation.patch` | 510 | 2 files, +210 −121 |
+| 10 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0005-computer-control-server-parameter-validation.patch` | 237 | 2 files, +134 −4 |
+| 11 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0006-computer-control-final-authorization.patch` | 374 | 4 files, +162 −27 |
 
 Within a repository the numbered order matters (4 depends on 3). Across repositories the order
-does not matter for applying, but all eight are needed for a working build: 5 calls the API from 4,
+does not matter for applying, but all eleven are needed for a working build: 5 calls the API from 4,
 and 3–5 do nothing without the flags from 1. Patch 7 requires version 5, enabled by 6.
 The follow-up preserves one-time consent, rechecks grants before creation, removes deleted-user
-records, and prevents automation of the permission editors.
+records, and prevents automation of the permission editors. Patches 9–11 correct the creation
+locking from 7, validate untrusted Parcel parameters at the server boundary, and recheck mutable
+permissions and policy before publishing a session. Do not stop at patch 7: its construction lock
+introduces a WindowManager lock-order cycle, resolved by 9.
 
 No `system/sepolicy` patch: the existing policy already lets system_server use `/dev/uinput`
 (`docs/patches.md` §3.3).

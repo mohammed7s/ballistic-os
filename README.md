@@ -35,8 +35,9 @@ replacements, so they survive whatever Google ships for the DMA in Android 18:
    default and edited only in Settings, consulted next to the DeviceConfig allowlists
    (`allowed_session_owner_apps`, `allowed_automatable_apps`) rather than replacing them; keep the
    assistant-role requirement and the per-target consent dialog. Require version 5, exclude Settings
-   and the consent app as targets, and recheck grants before creating a session. No sepolicy change
-   is needed.
+   and the consent app as targets, validate parcelled parameters, and recheck authorization before
+   publishing a session. Use a pending reservation to keep construction outside the session lock.
+   No sepolicy change is needed.
 2. **AppFunctions gate**: the same user-managed allowlist for callers.
 3. **OnDeviceIntelligence provider**: let the user choose the on-device model service, as they
    choose a keyboard, instead of a hard-coded OEM component.
@@ -52,7 +53,7 @@ touches GrapheneOS's hardening, keystore, verified boot or attestation.
 MANIFEST            the GrapheneOS tag this release builds from
 patches/            one directory per GrapheneOS repo; apply order in patches/README.md
   build_release/    0001 flags, 0002 consent app, 0003 version 5
-  frameworks_base/  0001 user allowlist, 0002 binder API, 0003 revocation hardening
+  frameworks_base/  0001–0006 allowlist, API, revocation, reservation, validation, authorization
   packages_apps_Settings/   0001 switches, 0002 protected targets and footer
   device_google_*/  later: product config, priv-app allowlist
 scripts/
