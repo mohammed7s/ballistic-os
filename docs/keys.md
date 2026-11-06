@@ -6,6 +6,15 @@ updates the OS accepts (OTA), and which apps may update system apps (APK signatu
 procedure is GrapheneOS's (<https://grapheneos.org/build#generating-release-signing-keys>), run by
 `scripts/sign.sh`.
 
+## Current keys are TEST keys (7 Nov 2026)
+
+The set in `~/ballistic-keys/blazer/` (CN=`Ballistic Test`) was made unattended for the first
+test run on a test phone, at the owner's request: `PASSPHRASE_FILE=~/ballistic-keys/blazer.passphrase
+scripts/sign.sh keygen`. The random passphrase sits next to the keys (mode 600), so the encryption
+protects nothing against anyone who can read that folder. Before anything ships to a phone that
+matters, make a new set with a typed passphrase (`scripts/sign.sh keygen` without
+`PASSPHRASE_FILE`) and re-flash, which wipes the phone.
+
 ## The rules
 
 1. **Keys never go on the build box.** The box is a rented container on someone else's host. It
@@ -41,11 +50,12 @@ Certificate subject: `CN=Ballistic`.
 
 ## Public fingerprints (safe to publish)
 
-Filled in after key generation:
+Test keys of 7 Nov 2026:
 
 - Verified boot key hash (`sha256sum avb_pkmd.bin`; the phone's yellow boot notice shows this):
-  `TBD`
-- Factory image signing key: `TBD`
+  `e99c1c0d016619767569b7b90bac2afc0e433fdef244fb70ec0fda659eb8a2ec`
+- Factory image signing key (`ballistic` in `allowed_signers`, namespace `factory images`):
+  `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINuLEEGkApOwSIs4o6Pfl48EHZ6gwK1R4EJiT1MhIviF`
 
 For comparison, official GrapheneOS's Pixel 10 Pro key hash is
 `4e8ee8f717754052198ca6d2d3aaa232e2461b4293c0d6f297e519cc778de093`. If the phone shows that, it is
