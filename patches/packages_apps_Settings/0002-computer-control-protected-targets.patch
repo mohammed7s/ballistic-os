@@ -1,0 +1,53 @@
+From 63d1f668f021f6e866008d2b12ddff506a5edba7 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 7 Nov 2026 02:22:54 +0300
+Subject: [PATCH] Screen automation: exclude permission editors and clarify
+ user allowance
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ res/values/strings_computer_control_ext.xml                  | 2 +-
+ .../specialaccess/ComputerControlTargetAppPageProvider.kt    | 5 +++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/res/values/strings_computer_control_ext.xml b/res/values/strings_computer_control_ext.xml
+index bc4cb2d..1a0abf4 100644
+--- a/res/values/strings_computer_control_ext.xml
++++ b/res/values/strings_computer_control_ext.xml
+@@ -22,5 +22,5 @@
+     <!-- Preference summary for an app the user has not allowed to use, or to be used by, screen automation. [CHAR LIMIT=45] -->
+     <string name="computer_control_automation_not_allowed">Not allowed</string>
+     <!-- Footer on a target app's screen automation page. [CHAR LIMIT=NONE] -->
+-    <string name="computer_control_automation_target_footer">When this is off, no app can see or interact with this app’s screen content through screen automation. When it is on, an assistant still needs your approval for this app.</string>
++    <string name="computer_control_automation_target_footer">Allow an assistant to request screen automation of this app. The assistant still needs your approval. Turning this off removes your allowance and clears previous approvals for this app. Device policy may also allow screen automation.</string>
+ </resources>
+diff --git a/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt b/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
+index 8f5a184..686e008 100644
+--- a/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
++++ b/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
+@@ -106,6 +106,7 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+     @Composable
+     override fun Page(arguments: Bundle?) {
+         val packageName = arguments?.getString(PACKAGE_NAME)!!
++        if (isPermissionManagementPackage(packageName)) return
+         val userId = arguments.getInt(USER_ID)
+         val packageInfo =
+             remember(packageName, userId) {
+@@ -242,6 +243,7 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+     /** A preference entry for the target app's app info page. */
+     @Composable
+     fun InfoPageEntryItem(app: ApplicationInfo) {
++        if (isPermissionManagementPackage(app.packageName)) return
+         val context = LocalContext.current
+         var reloadState by remember { mutableIntStateOf(0) }
+         val view = LocalView.current
+@@ -391,3 +393,6 @@ class ComputerControlTargetAppViewModel(context: Context, targetApp: Application
+     ViewModel() {
+     val model = ComputerControlTargetAppListModel(context, targetApp)
+ }
++
++private fun isPermissionManagementPackage(packageName: String): Boolean =
++    packageName == "com.android.settings" || packageName == "com.android.virtualdevicemanager"
+-- 
+2.53.0
+

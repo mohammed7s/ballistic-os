@@ -30,11 +30,13 @@ fetched from Google's DeviceConfig, which GrapheneOS never receives. The patches
 replacements, so they survive whatever Google ships for the DMA in Android 18:
 
 1. **Computer Control gate** (written, not yet built; [`docs/patches.md`](docs/patches.md)):
-   enable the `computer_control_access` and `computer_control_per_app_consent` flags; include the
+   enable the access, per-app-consent and version-5 flags; include the
    AOSP consent dialog app; add per-user lists of allowed agents and allowed target apps, empty by
    default and edited only in Settings, consulted next to the DeviceConfig allowlists
    (`allowed_session_owner_apps`, `allowed_automatable_apps`) rather than replacing them; keep the
-   assistant-role requirement and the per-target consent dialog. No sepolicy change is needed.
+   assistant-role requirement and the per-target consent dialog. Require version 5, exclude Settings
+   and the consent app as targets, and recheck grants before creating a session. No sepolicy change
+   is needed.
 2. **AppFunctions gate**: the same user-managed allowlist for callers.
 3. **OnDeviceIntelligence provider**: let the user choose the on-device model service, as they
    choose a keyboard, instead of a hard-coded OEM component.
@@ -49,9 +51,9 @@ touches GrapheneOS's hardening, keystore, verified boot or attestation.
 ```
 MANIFEST            the GrapheneOS tag this release builds from
 patches/            one directory per GrapheneOS repo; apply order in patches/README.md
-  build_release/    0001 Computer Control flags (cp2a), 0002 consent app (cur)
-  frameworks_base/  0001 user allowlist, 0002 its binder API; later: AppFunctions gate
-  packages_apps_Settings/   0001 Screen automation switches
+  build_release/    0001 flags, 0002 consent app, 0003 version 5
+  frameworks_base/  0001 user allowlist, 0002 binder API, 0003 revocation hardening
+  packages_apps_Settings/   0001 switches, 0002 protected targets and footer
   device_google_*/  later: product config, priv-app allowlist
 scripts/
   sync.sh           repo init at the pinned tag, apply patches, report conflicts

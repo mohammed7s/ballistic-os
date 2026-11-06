@@ -1,6 +1,6 @@
 # Patches
 
-The Computer Control gate for Ballistic for GrapheneOS: five patches, one commit each, made with
+The Computer Control gate for Ballistic for GrapheneOS: eight patches, one commit each, made with
 `git format-patch` against GrapheneOS tag **`2026110200`**. Design, privacy argument, verified
 facts and the first-build checklist: [`../docs/patches.md`](../docs/patches.md).
 
@@ -15,10 +15,15 @@ Status: applied cleanly with `git am` to fresh clones of the tag; not yet compil
 | 3 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0001-computer-control-user-allowlist.patch` | 781 | 4 files, +616 −5 |
 | 4 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0002-computer-control-user-allowlist-api.patch` | 309 | 5 files, +225 |
 | 5 | `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` | `0001-computer-control-user-allowlist-ui.patch` | 444 | 6 files, +197 −16 |
+| 6 | `build_release/` | `platform_build_release` | `build/release` | `0003-computer-control-version-five.patch` | 26 | 1 file, +6 |
+| 7 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0003-computer-control-revocation-hardening.patch` | 742 | 7 files, +296 −53 |
+| 8 | `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` | `0002-computer-control-protected-targets.patch` | 53 | 2 files, +6 −1 |
 
 Within a repository the numbered order matters (4 depends on 3). Across repositories the order
-does not matter for applying, but all five are needed for a working build: 5 calls the API from 4,
-and 3–5 do nothing without the flags from 1.
+does not matter for applying, but all eight are needed for a working build: 5 calls the API from 4,
+and 3–5 do nothing without the flags from 1. Patch 7 requires version 5, enabled by 6.
+The follow-up preserves one-time consent, rechecks grants before creation, removes deleted-user
+records, and prevents automation of the permission editors.
 
 No `system/sepolicy` patch: the existing policy already lets system_server use `/dev/uinput`
 (`docs/patches.md` §3.3).

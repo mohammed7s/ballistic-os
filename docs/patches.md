@@ -371,3 +371,57 @@ Not verifiable without a build or a device:
 **Ballistic app (later step, README item 4)**
 - [ ] Shipped as a priv-app with `ACCESS_COMPUTER_CONTROL` in a privapp-permissions allowlist,
       `POST_NOTIFICATIONS` granted, set as default digital assistant.
+
+## 9. Review follow-up (7 November 2026; design before implementation)
+
+Three additive commits follow the original series:
+
+- **frameworks/base: revocation and lifecycle hardening.** Deny Settings and the bundled
+  consent app as automation targets before any bypass; clear all agents' consent for a target
+  in the affected user when its switch is withdrawn; receive uninstall broadcasts for all users
+  and remove both stores' records when a user is deleted. Recheck owner/target eligibility and
+  consent immediately before asynchronous session creation. Serialize creation with consent and
+  user-list edits, and scope session closures to the affected user. Require version 5 so the
+  Android 17 foreground-window check cannot be avoided by requesting version 4. Files: allowlist
+  controller, user store, session processor and implementation, and focused regression tests.
+  Privacy: permission editors cannot grant more access through automation; withdrawal cannot be
+  bypassed by an already-pending request or affect another user's sessions.
+- **build/release: enable version 5 support** in cp2a alongside the existing access/consent flags.
+  File: the corresponding aconfig value. Otherwise requiring v5 would leave the advertised
+  server version at 4. No permission, role or per-target consent relaxation.
+- **Settings: correct the target-switch footer and hide protected targets.** Files:
+  `strings_computer_control_ext.xml`, `ComputerControlTargetAppPageProvider.kt`. Hide both the
+  App info entry and direct target-page route for Settings and the consent app.
+  The user list is an additional source beside DeviceConfig, so off is not a universal deny.
+  The footer must describe user approval and retained device policy accurately.
+
+DeviceConfig, signing checks, GrapheneOS hardening, sepolicy, keystore, verified boot and
+attestation remain intact. SPEC and README will describe the additive gate and privileged-app
+requirement. Compile and device results remain pending the build agent's unmodified build.
+
+The creation recheck preserves "Allow once": only the targets approved by the current dialog
+bypass the saved-consent lookup. Targets previously approved with "Always allow" are checked
+again in the persisted store. Verified source: frameworks/base
+`packages/VirtualDeviceManager/src/com/android/virtualdevicemanager/RequestComputerControlAccessFragment.java:183-212`.
+
+Follow-up first-build checks (not executed on this laptop):
+- [ ] Run `VirtualDeviceServicesTests` tests for `ComputerControlUserAllowlistTest`,
+      `ComputerControlAllowlistControllerTest` and `ComputerControlSessionProcessorTest`.
+- [ ] Check both "Allow once" and "Always allow", including mixed targets with saved and fresh
+      consent. Withdraw an owner or target while its dialog is open; no session should start.
+- [ ] Withdraw then re-enable a target; its old saved consent must be gone, including after reboot.
+- [ ] Repeat uninstall and user deletion in a secondary user; other users' grants must survive.
+- [ ] With identical package names installed in two users, withdrawing in one must not close the
+      other's session. Exercise creation/revocation concurrently to check locking and deadlocks.
+- [ ] Settings and the consent app must be rejected even if present in DeviceConfig; their target
+      settings entries and direct routes must be hidden.
+- [ ] Version 4 must be rejected; version 5 must be advertised and require a foreground window.
+
+The protected package names match this pinned tree. A future rebase that renames Settings or the
+consent app must update both the service denial and the Settings UI exclusion.
+
+Verification performed on 7 November 2026: all eight patches applied with `git am` to new
+`--depth 1 --branch 2026110200` clones from the local source repositories. Each resulting Git tree
+exactly matched its implementation clone. `git diff --check` passed for all three series;
+the edited Settings strings parsed as XML. These checks do not establish compilation or runtime
+correctness. Verification checkout: `~/src/ballistic-os-work/verify/followup-uf1zhxud/`.
