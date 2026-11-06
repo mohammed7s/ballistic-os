@@ -1,0 +1,781 @@
+From 5d6cc0ce34a91aa3c4a12afe37cdac4faf812442 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 7 Nov 2026 00:11:04 +0300
+Subject: [PATCH 1/2] computercontrol: consult a user allowlist next to
+ DeviceConfig
+
+Computer Control decides which apps may own a session and which apps may
+be automated from the DeviceConfig keys allowed_session_owner_apps and
+allowed_automatable_apps (namespace computer_control). Devices that do not
+receive DeviceConfig have no way to use the feature, and on devices that
+do, the vendor rather than the user decides.
+
+Add a per-user allowlist for both roles and consult it alongside the
+DeviceConfig lists, in the same two places:
+
+ - isPackageApprovedToRunAutomation(): the session owner check, reached
+   from session creation after the ACCESS_COMPUTER_CONTROL, notification
+   and assistant role checks;
+ - isPackageInAutomatableAppList(): the target check, reached from
+   session creation and from every launchApplication(). An app the user
+   approved as an agent can never be a target, and the DeviceConfig
+   denylist still wins.
+
+The lists are empty by default and nothing in this change adds to them.
+Entries are bound to the signing certificates the package had when the
+user allowed it, so a differently signed package with the same name does
+not inherit them; a rotated key with the old certificate in its lineage
+does. They are kept in /data/system/computercontrol/user_allowlist.xml,
+read once at boot (a corrupt file reads as empty), dropped when the
+package is uninstalled and shown in dumpsys virtualdevice.
+
+The assistant role requirement, per-app consent, the consent dialog, test
+agents and the DeviceConfig path behave as before.
+
+Test: atest ComputerControlUserAllowlistTest ComputerControlAllowlistControllerTest
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../ComputerControlAllowlistController.java   |  88 ++++-
+ .../ComputerControlSessionProcessor.java      |   1 +
+ .../ComputerControlUserAllowlist.java         | 371 ++++++++++++++++++
+ .../ComputerControlUserAllowlistTest.java     | 161 ++++++++
+ 4 files changed, 616 insertions(+), 5 deletions(-)
+ create mode 100644 services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java
+ create mode 100644 tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java
+
+diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
+index 67dee3c46..8951fb1a2 100644
+--- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
++++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
+@@ -59,6 +59,7 @@ import com.android.server.pm.permission.PermissionManagerServiceInterface;
+ import java.io.File;
+ import java.io.FileOutputStream;
+ import java.io.IOException;
++import java.io.PrintWriter;
+ import java.nio.charset.StandardCharsets;
+ import java.util.ArrayList;
+ import java.util.Collections;
+@@ -81,6 +82,7 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+     private static final String AUTOMATABLE_APP_ALLOWLIST_FILE_NAME =
+             "automatable_app_allowlist.txt";
+     private static final String AUTOMATABLE_APP_DENYLIST_FILE_NAME = "automatable_app_denylist.txt";
++    private static final String USER_ALLOWLIST_FILE_NAME = "user_allowlist.xml";
+     @VisibleForTesting
+     static final String COMPUTER_CONTROL_NAMESPACE = "computer_control";
+     @VisibleForTesting
+@@ -95,6 +97,9 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+     private final DeviceConfigRemoteList mSessionOwnerAllowlist;
+     private final DeviceConfigRemoteList mAutomatableAppAllowlist;
+     private final DeviceConfigRemoteList mAutomatableAppDenylist;
++    // Session owner and automatable app allowlists set by the user, consulted alongside the
++    // DeviceConfig allowlists above.
++    private final ComputerControlUserAllowlist mUserAllowlist;
+     private final boolean mBuildIsDebuggable;
+     private final PermissionManagerServiceInterface mPermissionManager;
+     private final ComputerControlDataStore mDataStore;
+@@ -134,6 +139,8 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+                 COMPUTER_CONTROL_AUTOMATABLE_APP_ALLOWLIST_KEY);
+         mAutomatableAppDenylist = new DeviceConfigRemoteList(automatableAppsDenylistFile,
+                 COMPUTER_CONTROL_AUTOMATABLE_APP_DENYLIST_KEY);
++        mUserAllowlist = new ComputerControlUserAllowlist(
++                new File(agentAllowlistFile.getParentFile(), USER_ALLOWLIST_FILE_NAME), executor);
+         mPermissionManager = permissionManager;
+         mBuildIsDebuggable = buildIsDebuggable;
+         mDataStore = dataStore;
+@@ -151,6 +158,10 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+         }
+     }
+ 
++    void dump(@NonNull PrintWriter fout, @NonNull String indent) {
++        mUserAllowlist.dump(fout, indent);
++    }
++
+     void monitor() {
+         mAutomatableAppAllowlist.monitor();
+         mSessionOwnerAllowlist.monitor();
+@@ -178,6 +189,7 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+         Slog.v(TAG, "Initialize called, updating allowlists and adding DeviceConfig listener");
+ 
+         mBackgroundExecutor.execute(() -> {
++            mUserAllowlist.load();
+             mSessionOwnerAllowlist.update();
+             mAutomatableAppAllowlist.update();
+             mAutomatableAppDenylist.update();
+@@ -293,7 +305,8 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+             Slog.i(TAG, "isPackageAllowedToCreateSession: Found super agent " + packageName);
+             return true;
+         }
+-        final boolean isInAllowlist = mSessionOwnerAllowlist.anyMatch(packageName, signingDetails);
++        final boolean isInAllowlist = mSessionOwnerAllowlist.anyMatch(packageName, signingDetails)
++                || mUserAllowlist.isSessionOwner(userId, packageName, signingDetails);
+         Slog.i(TAG, "isPackageAllowedToCreateSession: Is there any allowlist entry for "
+                 + packageName + " : " + isInAllowlist);
+         return isInAllowlist;
+@@ -394,11 +407,11 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+                 return true;
+             }
+         }
+-        return isPackageInAutomatableAppList(targetPackage, packageManager);
++        return isPackageInAutomatableAppList(targetPackage, userId, packageManager);
+     }
+ 
+     private boolean isPackageInAutomatableAppList(@NonNull String targetPackage,
+-            @NonNull PackageManager packageManager) {
++            @UserIdInt int userId, @NonNull PackageManager packageManager) {
+         final SigningDetails targetPackageSigningDetails =
+                 getSigningDetails(targetPackage, packageManager);
+         if (targetPackageSigningDetails == null) {
+@@ -407,7 +420,9 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+             return false;
+         }
+ 
+-        if (mSessionOwnerAllowlist.anyMatch(targetPackage, targetPackageSigningDetails)) {
++        if (mSessionOwnerAllowlist.anyMatch(targetPackage, targetPackageSigningDetails)
++                || mUserAllowlist.isSessionOwner(userId, targetPackage,
++                        targetPackageSigningDetails)) {
+             Slog.i(
+                     TAG,
+                     "isPackageAutomatable: Cannot automate an approved agent application: "
+@@ -422,12 +437,74 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+         }
+         final ApplicationInfo appInfo = getApplicationInfo(targetPackage, packageManager);
+         final boolean isInAllowlist = mAutomatableAppAllowlist.anyMatch(targetPackage,
+-                targetPackageSigningDetails, isPreInstalledApp(appInfo));
++                targetPackageSigningDetails, isPreInstalledApp(appInfo))
++                || mUserAllowlist.isAutomatableApp(userId, targetPackage,
++                        targetPackageSigningDetails);
+         Slog.i(TAG, "isPackageAutomatable: Is there any allowlist entry for " + targetPackage
+                 + " : " + isInAllowlist);
+         return isInAllowlist;
+     }
+ 
++    /**
++     * Returns whether the user approved {@code packageName} as a computer control agent. Unlike
++     * {@link #isPackageApprovedToRunAutomation}, this ignores the DeviceConfig allowlist.
++     */
++    boolean isPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId) {
++        final SigningDetails signingDetails =
++                getSigningDetails(packageName, getPackageManagerForUser(userId));
++        return signingDetails != null
++                && mUserAllowlist.isSessionOwner(userId, packageName, signingDetails);
++    }
++
++    /**
++     * Sets whether the user approves {@code packageName} as a computer control agent. An approval
++     * is bound to the package's current signing certificates.
++     */
++    void setPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId, boolean approved) {
++        if (!approved) {
++            mUserAllowlist.removeSessionOwner(userId, packageName);
++            return;
++        }
++        final SigningDetails signingDetails =
++                getSigningDetails(packageName, getPackageManagerForUser(userId));
++        if (signingDetails == null) {
++            throw new IllegalArgumentException("Unknown package " + packageName);
++        }
++        mUserAllowlist.addSessionOwner(userId, packageName, signingDetails);
++    }
++
++    /**
++     * Returns whether the user allowed {@code packageName} to be automated. Unlike
++     * {@link #isPackageTargetableForAutomation}, this ignores the DeviceConfig lists.
++     */
++    boolean isPackageTargetableForAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId) {
++        final SigningDetails signingDetails =
++                getSigningDetails(packageName, getPackageManagerForUser(userId));
++        return signingDetails != null
++                && mUserAllowlist.isAutomatableApp(userId, packageName, signingDetails);
++    }
++
++    /**
++     * Sets whether the user allows {@code packageName} to be automated. An entry is bound to the
++     * package's current signing certificates.
++     */
++    void setPackageTargetableForAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId, boolean targetable) {
++        if (!targetable) {
++            mUserAllowlist.removeAutomatableApp(userId, packageName);
++            return;
++        }
++        final SigningDetails signingDetails =
++                getSigningDetails(packageName, getPackageManagerForUser(userId));
++        if (signingDetails == null) {
++            throw new IllegalArgumentException("Unknown package " + packageName);
++        }
++        mUserAllowlist.addAutomatableApp(userId, packageName, signingDetails);
++    }
++
+     /**
+      * Returns whether the given {@param agentUid} and {@param agentPackageName} have consent to
+      * automate the {@param targetPackage}
+@@ -562,6 +639,7 @@ final class ComputerControlAllowlistController implements DeviceConfig.OnPropert
+         }
+         Slog.i(TAG, "Package removed: " + packageName);
+         final int userId = UserHandle.getUserId(uid);
++        mUserAllowlist.onPackageRemoved(userId, packageName);
+         synchronized (mPerAgentAutomatableAppList) {
+             boolean changed = false;
+             // If the removed package was an agent, remove it from the agent map
+diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+index 82fe6749b..c984e5595 100644
+--- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
++++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+@@ -618,6 +618,7 @@ public final class ComputerControlSessionProcessor {
+         fout.println(indent + "Computer Control Version: " +
+                 VirtualDeviceManager.COMPUTER_CONTROL_VERSION);
+         fout.println(indent + "Maximum Concurrent Sessions: " + MAXIMUM_CONCURRENT_SESSIONS);
++        mAllowlistController.dump(fout, indent);
+         fout.println(indent + "Active computer control sessions: ");
+         synchronized (mSessions) {
+             for (int i = 0; i < mSessions.size(); i++) {
+diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java
+new file mode 100644
+index 000000000..c89ecd157
+--- /dev/null
++++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java
+@@ -0,0 +1,371 @@
++/*
++ * Copyright (C) 2026 The Ballistic Authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.companion.virtual.computercontrol;
++
++import android.annotation.NonNull;
++import android.annotation.UserIdInt;
++import android.content.pm.Signature;
++import android.content.pm.SigningDetails;
++import android.util.ArrayMap;
++import android.util.ArraySet;
++import android.util.AtomicFile;
++import android.util.PackageUtils;
++import android.util.Slog;
++import android.util.SparseArray;
++import android.util.Xml;
++
++import com.android.internal.annotations.GuardedBy;
++import com.android.modules.utils.TypedXmlPullParser;
++import com.android.modules.utils.TypedXmlSerializer;
++
++import org.xmlpull.v1.XmlPullParser;
++import org.xmlpull.v1.XmlPullParserException;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.PrintWriter;
++import java.util.Map;
++import java.util.concurrent.Executor;
++
++/**
++ * Computer control allowlists that only the user can change.
++ *
++ * <p>These play the same role as the DeviceConfig session owner and automatable app allowlists
++ * in {@link ComputerControlAllowlistController}, for devices that do not receive DeviceConfig.
++ * They are empty by default and kept per user. Each entry is bound to the signing certificates
++ * the package had when the user allowed it, so a differently signed package with the same name
++ * does not inherit the entry; a key rotation that keeps the old certificate in the lineage does.
++ */
++final class ComputerControlUserAllowlist {
++    private static final String TAG = "ComputerControlUserAllowlist";
++
++    private static final String TAG_ROOT = "computer-control-user-allowlist";
++    private static final String TAG_USER = "user";
++    private static final String TAG_SESSION_OWNER = "session-owner";
++    private static final String TAG_AUTOMATABLE_APP = "automatable-app";
++    private static final String TAG_CERT = "cert";
++    private static final String ATTR_USER_ID = "id";
++    private static final String ATTR_PACKAGE = "package";
++    private static final String ATTR_SHA256 = "sha256";
++
++    private final AtomicFile mAtomicFile;
++    private final Executor mBackgroundExecutor;
++    private final Object mLock = new Object();
++    @GuardedBy("mLock")
++    private final PackageList mSessionOwners = new PackageList();
++    @GuardedBy("mLock")
++    private final PackageList mAutomatableApps = new PackageList();
++
++    ComputerControlUserAllowlist(@NonNull File file, @NonNull Executor backgroundExecutor) {
++        mAtomicFile = new AtomicFile(file);
++        mBackgroundExecutor = backgroundExecutor;
++    }
++
++    /** Returns whether the user allowed {@code packageName} to own computer control sessions. */
++    boolean isSessionOwner(@UserIdInt int userId, @NonNull String packageName,
++            @NonNull SigningDetails signingDetails) {
++        synchronized (mLock) {
++            return mSessionOwners.matches(userId, packageName, signingDetails);
++        }
++    }
++
++    /** Returns whether the user allowed {@code packageName} to be automated. */
++    boolean isAutomatableApp(@UserIdInt int userId, @NonNull String packageName,
++            @NonNull SigningDetails signingDetails) {
++        synchronized (mLock) {
++            return mAutomatableApps.matches(userId, packageName, signingDetails);
++        }
++    }
++
++    /** Allows {@code packageName} to own sessions, bound to its current certificates. */
++    void addSessionOwner(@UserIdInt int userId, @NonNull String packageName,
++            @NonNull SigningDetails signingDetails) {
++        synchronized (mLock) {
++            if (mSessionOwners.add(userId, packageName, signingDetails)) {
++                scheduleWriteLocked();
++            }
++        }
++    }
++
++    void removeSessionOwner(@UserIdInt int userId, @NonNull String packageName) {
++        synchronized (mLock) {
++            if (mSessionOwners.remove(userId, packageName)) {
++                scheduleWriteLocked();
++            }
++        }
++    }
++
++    /** Allows {@code packageName} to be automated, bound to its current certificates. */
++    void addAutomatableApp(@UserIdInt int userId, @NonNull String packageName,
++            @NonNull SigningDetails signingDetails) {
++        synchronized (mLock) {
++            if (mAutomatableApps.add(userId, packageName, signingDetails)) {
++                scheduleWriteLocked();
++            }
++        }
++    }
++
++    void removeAutomatableApp(@UserIdInt int userId, @NonNull String packageName) {
++        synchronized (mLock) {
++            if (mAutomatableApps.remove(userId, packageName)) {
++                scheduleWriteLocked();
++            }
++        }
++    }
++
++    /** Drops every entry for a package that was uninstalled from {@code userId}. */
++    void onPackageRemoved(@UserIdInt int userId, @NonNull String packageName) {
++        synchronized (mLock) {
++            final boolean changed = mSessionOwners.remove(userId, packageName)
++                    | mAutomatableApps.remove(userId, packageName);
++            if (changed) {
++                scheduleWriteLocked();
++            }
++        }
++    }
++
++    /** Reads the persisted lists. Entries are not consulted before this has run. */
++    void load() {
++        final PackageList sessionOwners = new PackageList();
++        final PackageList automatableApps = new PackageList();
++        if (mAtomicFile.exists()) {
++            try (FileInputStream stream = mAtomicFile.openRead()) {
++                final TypedXmlPullParser parser = Xml.resolvePullParser(stream);
++                int type;
++                while ((type = parser.next()) != XmlPullParser.END_DOCUMENT) {
++                    if (type == XmlPullParser.START_TAG && TAG_USER.equals(parser.getName())) {
++                        readUser(parser, sessionOwners, automatableApps);
++                    }
++                }
++            } catch (IOException | XmlPullParserException | RuntimeException e) {
++                // Fail closed: a corrupt file leaves both lists empty.
++                Slog.e(TAG, "Failed to read user allowlist, starting empty", e);
++                sessionOwners.clear();
++                automatableApps.clear();
++            }
++        }
++        synchronized (mLock) {
++            mSessionOwners.replaceWith(sessionOwners);
++            mAutomatableApps.replaceWith(automatableApps);
++        }
++    }
++
++    void dump(@NonNull PrintWriter fout, @NonNull String indent) {
++        synchronized (mLock) {
++            fout.println(indent + "User-approved session owners: " + mSessionOwners);
++            fout.println(indent + "User-approved automatable apps: " + mAutomatableApps);
++        }
++    }
++
++    private static void readUser(@NonNull TypedXmlPullParser parser,
++            @NonNull PackageList sessionOwners, @NonNull PackageList automatableApps)
++            throws IOException, XmlPullParserException {
++        final int userId = parser.getAttributeInt(null, ATTR_USER_ID);
++        final int userDepth = parser.getDepth();
++        int type;
++        while ((type = parser.next()) != XmlPullParser.END_DOCUMENT
++                && (type != XmlPullParser.END_TAG || parser.getDepth() > userDepth)) {
++            if (type != XmlPullParser.START_TAG) {
++                continue;
++            }
++            if (TAG_SESSION_OWNER.equals(parser.getName())) {
++                readPackage(parser, userId, sessionOwners);
++            } else if (TAG_AUTOMATABLE_APP.equals(parser.getName())) {
++                readPackage(parser, userId, automatableApps);
++            }
++        }
++    }
++
++    private static void readPackage(@NonNull TypedXmlPullParser parser, @UserIdInt int userId,
++            @NonNull PackageList list) throws IOException, XmlPullParserException {
++        final String packageName = parser.getAttributeValue(null, ATTR_PACKAGE);
++        final ArraySet<String> digests = new ArraySet<>();
++        final int packageDepth = parser.getDepth();
++        int type;
++        while ((type = parser.next()) != XmlPullParser.END_DOCUMENT
++                && (type != XmlPullParser.END_TAG || parser.getDepth() > packageDepth)) {
++            if (type == XmlPullParser.START_TAG && TAG_CERT.equals(parser.getName())) {
++                final String digest = parser.getAttributeValue(null, ATTR_SHA256);
++                if (digest != null) {
++                    digests.add(digest);
++                }
++            }
++        }
++        if (packageName != null && !digests.isEmpty()) {
++            list.put(userId, packageName, digests);
++        }
++    }
++
++    @GuardedBy("mLock")
++    private void scheduleWriteLocked() {
++        final PackageList sessionOwners = mSessionOwners.copy();
++        final PackageList automatableApps = mAutomatableApps.copy();
++        mBackgroundExecutor.execute(() -> write(sessionOwners, automatableApps));
++    }
++
++    private void write(@NonNull PackageList sessionOwners, @NonNull PackageList automatableApps) {
++        FileOutputStream stream = null;
++        try {
++            stream = mAtomicFile.startWrite();
++            final TypedXmlSerializer serializer = Xml.resolveSerializer(stream);
++            serializer.startDocument(null, true);
++            serializer.startTag(null, TAG_ROOT);
++            final ArraySet<Integer> userIds = new ArraySet<>();
++            sessionOwners.collectUserIds(userIds);
++            automatableApps.collectUserIds(userIds);
++            for (int i = 0; i < userIds.size(); i++) {
++                final int userId = userIds.valueAt(i);
++                serializer.startTag(null, TAG_USER);
++                serializer.attributeInt(null, ATTR_USER_ID, userId);
++                sessionOwners.writeUser(serializer, userId, TAG_SESSION_OWNER);
++                automatableApps.writeUser(serializer, userId, TAG_AUTOMATABLE_APP);
++                serializer.endTag(null, TAG_USER);
++            }
++            serializer.endTag(null, TAG_ROOT);
++            serializer.endDocument();
++            mAtomicFile.finishWrite(stream);
++        } catch (IOException e) {
++            Slog.e(TAG, "Failed to write user allowlist", e);
++            if (stream != null) {
++                mAtomicFile.failWrite(stream);
++            }
++        }
++    }
++
++    /** Digests of the certificates an entry for {@code signingDetails} is bound to. */
++    @NonNull
++    private static ArraySet<String> certificateDigests(@NonNull SigningDetails signingDetails) {
++        final ArraySet<String> digests = new ArraySet<>();
++        final Signature[] signatures = signingDetails.getSignatures();
++        if (signatures == null) {
++            return digests;
++        }
++        for (Signature signature : signatures) {
++            final String digest = PackageUtils.computeSha256Digest(signature.toByteArray());
++            if (digest != null) {
++                digests.add(digest);
++            }
++        }
++        return digests;
++    }
++
++    /** Per user, package name to the certificate digests it was allowed with. */
++    private static final class PackageList {
++        private final SparseArray<ArrayMap<String, ArraySet<String>>> mPackages =
++                new SparseArray<>();
++
++        boolean matches(@UserIdInt int userId, @NonNull String packageName,
++                @NonNull SigningDetails signingDetails) {
++            final ArrayMap<String, ArraySet<String>> packages = mPackages.get(userId);
++            final ArraySet<String> digests = packages == null ? null : packages.get(packageName);
++            return digests != null && signingDetails.hasAncestorOrSelfWithDigest(digests);
++        }
++
++        /** Returns whether the list changed. */
++        boolean add(@UserIdInt int userId, @NonNull String packageName,
++                @NonNull SigningDetails signingDetails) {
++            final ArraySet<String> digests = certificateDigests(signingDetails);
++            if (digests.isEmpty()) {
++                throw new IllegalArgumentException("No signing certificate for " + packageName);
++            }
++            final ArrayMap<String, ArraySet<String>> packages = mPackages.get(userId);
++            if (packages != null && digests.equals(packages.get(packageName))) {
++                return false;
++            }
++            put(userId, packageName, digests);
++            return true;
++        }
++
++        /** Returns whether the list changed. */
++        boolean remove(@UserIdInt int userId, @NonNull String packageName) {
++            final ArrayMap<String, ArraySet<String>> packages = mPackages.get(userId);
++            if (packages == null || packages.remove(packageName) == null) {
++                return false;
++            }
++            if (packages.isEmpty()) {
++                mPackages.remove(userId);
++            }
++            return true;
++        }
++
++        void put(@UserIdInt int userId, @NonNull String packageName,
++                @NonNull ArraySet<String> digests) {
++            ArrayMap<String, ArraySet<String>> packages = mPackages.get(userId);
++            if (packages == null) {
++                packages = new ArrayMap<>();
++                mPackages.put(userId, packages);
++            }
++            packages.put(packageName, digests);
++        }
++
++        void clear() {
++            mPackages.clear();
++        }
++
++        void replaceWith(@NonNull PackageList other) {
++            mPackages.clear();
++            for (int i = 0; i < other.mPackages.size(); i++) {
++                mPackages.put(other.mPackages.keyAt(i), other.mPackages.valueAt(i));
++            }
++        }
++
++        @NonNull
++        PackageList copy() {
++            final PackageList copy = new PackageList();
++            for (int i = 0; i < mPackages.size(); i++) {
++                final ArrayMap<String, ArraySet<String>> packages = new ArrayMap<>();
++                for (Map.Entry<String, ArraySet<String>> entry : mPackages.valueAt(i).entrySet()) {
++                    packages.put(entry.getKey(), new ArraySet<>(entry.getValue()));
++                }
++                copy.mPackages.put(mPackages.keyAt(i), packages);
++            }
++            return copy;
++        }
++
++        void collectUserIds(@NonNull ArraySet<Integer> userIds) {
++            for (int i = 0; i < mPackages.size(); i++) {
++                userIds.add(mPackages.keyAt(i));
++            }
++        }
++
++        void writeUser(@NonNull TypedXmlSerializer serializer, @UserIdInt int userId,
++                @NonNull String tag) throws IOException {
++            final ArrayMap<String, ArraySet<String>> packages = mPackages.get(userId);
++            if (packages == null) {
++                return;
++            }
++            for (int i = 0; i < packages.size(); i++) {
++                serializer.startTag(null, tag);
++                serializer.attribute(null, ATTR_PACKAGE, packages.keyAt(i));
++                final ArraySet<String> digests = packages.valueAt(i);
++                for (int j = 0; j < digests.size(); j++) {
++                    serializer.startTag(null, TAG_CERT);
++                    serializer.attribute(null, ATTR_SHA256, digests.valueAt(j));
++                    serializer.endTag(null, TAG_CERT);
++                }
++                serializer.endTag(null, tag);
++            }
++        }
++
++        @Override
++        public String toString() {
++            return mPackages.toString();
++        }
++    }
++}
+diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java
+new file mode 100644
+index 000000000..30367d833
+--- /dev/null
++++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java
+@@ -0,0 +1,161 @@
++/*
++ * Copyright (C) 2026 The Ballistic Authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.companion.virtual.computercontrol;
++
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++import android.content.pm.Signature;
++import android.content.pm.SigningDetails;
++import android.platform.test.annotations.Presubmit;
++
++import androidx.test.ext.junit.runners.AndroidJUnit4;
++
++import org.junit.After;
++import org.junit.Before;
++import org.junit.Test;
++import org.junit.runner.RunWith;
++
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++
++@Presubmit
++@RunWith(AndroidJUnit4.class)
++public class ComputerControlUserAllowlistTest {
++
++    private static final int USER_ID = 0;
++    private static final int OTHER_USER_ID = 10;
++    private static final String AGENT = "com.example.agent";
++    private static final String TARGET = "com.example.target";
++
++    private final SigningDetails mSignedByA = signedBy(signature(1));
++    private final SigningDetails mSignedByB = signedBy(signature(2));
++
++    private File mFile;
++    private ComputerControlUserAllowlist mAllowlist;
++
++    @Before
++    public void setUp() throws IOException {
++        mFile = File.createTempFile("test_user_allowlist", ".xml");
++        mFile.delete();
++        mAllowlist = newAllowlist();
++    }
++
++    @After
++    public void tearDown() {
++        mFile.delete();
++    }
++
++    @Test
++    public void emptyByDefault() {
++        assertFalse(mAllowlist.isSessionOwner(USER_ID, AGENT, mSignedByA));
++        assertFalse(mAllowlist.isAutomatableApp(USER_ID, TARGET, mSignedByA));
++    }
++
++    @Test
++    public void addSessionOwner_matchesSameSignerAndUserOnly() {
++        mAllowlist.addSessionOwner(USER_ID, AGENT, mSignedByA);
++
++        assertTrue(mAllowlist.isSessionOwner(USER_ID, AGENT, mSignedByA));
++        assertFalse(mAllowlist.isSessionOwner(USER_ID, AGENT, mSignedByB));
++        assertFalse(mAllowlist.isSessionOwner(OTHER_USER_ID, AGENT, mSignedByA));
++        assertFalse(mAllowlist.isAutomatableApp(USER_ID, AGENT, mSignedByA));
++    }
++
++    @Test
++    public void addAutomatableApp_doesNotMakeSessionOwner() {
++        mAllowlist.addAutomatableApp(USER_ID, TARGET, mSignedByA);
++
++        assertTrue(mAllowlist.isAutomatableApp(USER_ID, TARGET, mSignedByA));
++        assertFalse(mAllowlist.isSessionOwner(USER_ID, TARGET, mSignedByA));
++    }
++
++    @Test
++    public void keyRotation_keepsEntry() throws Exception {
++        mAllowlist.addSessionOwner(USER_ID, AGENT, mSignedByA);
++        final SigningDetails rotated = new SigningDetails(new Signature[] {signature(2)},
++                SigningDetails.SignatureSchemeVersion.SIGNING_BLOCK_V3, null,
++                new Signature[] {signature(1), signature(2)});
++
++        assertTrue(mAllowlist.isSessionOwner(USER_ID, AGENT, rotated));
++    }
++
++    @Test
++    public void remove_dropsEntry() {
++        mAllowlist.addSessionOwner(USER_ID, AGENT, mSignedByA);
++        mAllowlist.addAutomatableApp(USER_ID, TARGET, mSignedByA);
++
++        mAllowlist.removeSessionOwner(USER_ID, AGENT);
++        mAllowlist.removeAutomatableApp(USER_ID, TARGET);
++
++        assertFalse(mAllowlist.isSessionOwner(USER_ID, AGENT, mSignedByA));
++        assertFalse(mAllowlist.isAutomatableApp(USER_ID, TARGET, mSignedByA));
++    }
++
++    @Test
++    public void onPackageRemoved_dropsEntriesForThatUserOnly() {
++        mAllowlist.addAutomatableApp(USER_ID, TARGET, mSignedByA);
++        mAllowlist.addAutomatableApp(OTHER_USER_ID, TARGET, mSignedByA);
++
++        mAllowlist.onPackageRemoved(USER_ID, TARGET);
++
++        assertFalse(mAllowlist.isAutomatableApp(USER_ID, TARGET, mSignedByA));
++        assertTrue(mAllowlist.isAutomatableApp(OTHER_USER_ID, TARGET, mSignedByA));
++    }
++
++    @Test
++    public void entriesArePersisted() {
++        mAllowlist.addSessionOwner(USER_ID, AGENT, mSignedByA);
++        mAllowlist.addAutomatableApp(OTHER_USER_ID, TARGET, mSignedByB);
++
++        final ComputerControlUserAllowlist reloaded = newAllowlist();
++
++        assertTrue(reloaded.isSessionOwner(USER_ID, AGENT, mSignedByA));
++        assertTrue(reloaded.isAutomatableApp(OTHER_USER_ID, TARGET, mSignedByB));
++        assertFalse(reloaded.isAutomatableApp(OTHER_USER_ID, TARGET, mSignedByA));
++    }
++
++    @Test
++    public void corruptFile_startsEmpty() throws IOException {
++        try (FileOutputStream fos = new FileOutputStream(mFile)) {
++            fos.write("corrupt data".getBytes());
++        }
++
++        final ComputerControlUserAllowlist reloaded = newAllowlist();
++
++        assertFalse(reloaded.isSessionOwner(USER_ID, AGENT, mSignedByA));
++    }
++
++    private ComputerControlUserAllowlist newAllowlist() {
++        final ComputerControlUserAllowlist allowlist =
++                new ComputerControlUserAllowlist(mFile, Runnable::run);
++        allowlist.load();
++        return allowlist;
++    }
++
++    private static Signature signature(int i) {
++        final byte[] signatureBytes = new byte[256];
++        signatureBytes[0] = (byte) i;
++        return new Signature(signatureBytes);
++    }
++
++    private static SigningDetails signedBy(Signature signature) {
++        return new SigningDetails(new Signature[] {signature},
++                SigningDetails.SignatureSchemeVersion.SIGNING_BLOCK_V3, null, null);
++    }
++}
+-- 
+2.53.0
+

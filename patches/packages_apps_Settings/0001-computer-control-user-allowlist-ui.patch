@@ -1,0 +1,444 @@
+From d6a9d8fb2a9c0fa67487fbf8b4fe05f3a95029e4 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 7 Nov 2026 00:09:45 +0300
+Subject: [PATCH] Screen automation: let the user allow agents and target apps
+
+With the user allowlists in frameworks/base, the screen automation pages
+become the place where the user decides which apps may use screen
+automation and which apps may be automated.
+
+ - Special app access > Screen automation lists every app that holds
+   ACCESS_COMPUTER_CONTROL (a privileged permission, so only preinstalled
+   apps), not only those already allowed; unallowed ones read
+   "Not allowed".
+ - An agent's page gets a main switch, "Allow screen automation", off by
+   default. The list of apps it may automate is disabled while it is off.
+ - App info > Screen automation is shown for every launchable app that is
+   not itself an agent. Its page gets a main switch, "Allow screen
+   automation of this app", off by default.
+
+Both switches only open a gate: the agent must still be the default
+digital assistant, and each target still needs the user's approval in the
+consent dialog. Turning a switch off closes the sessions that depend on
+it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ res/values/strings_computer_control_ext.xml   | 26 ++++++++
+ .../ComputerControlAgentPageProvider.kt       | 34 ++++++++++-
+ .../ComputerControlAutomation.kt              | 28 +++++++++
+ .../ComputerControlTargetAppPageProvider.kt   | 60 +++++++++++++++----
+ .../ComputerControlAgentPageProviderTest.kt   | 32 ++++++++++
+ .../ComputerControlAutomationTest.kt          | 33 ++++++++++
+ 6 files changed, 197 insertions(+), 16 deletions(-)
+ create mode 100644 res/values/strings_computer_control_ext.xml
+
+diff --git a/res/values/strings_computer_control_ext.xml b/res/values/strings_computer_control_ext.xml
+new file mode 100644
+index 0000000..bc4cb2d
+--- /dev/null
++++ b/res/values/strings_computer_control_ext.xml
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright (C) 2026 The Ballistic Authors
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License.
++-->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <!-- Main switch on an agent app's screen automation page. Controls whether the user allows the app to use screen automation at all. [CHAR LIMIT=60] -->
++    <string name="computer_control_automation_allow_agent">Allow screen automation</string>
++    <!-- Main switch on a target app's screen automation page. Controls whether the user allows any agent to automate this app. [CHAR LIMIT=60] -->
++    <string name="computer_control_automation_allow_target">Allow screen automation of this app</string>
++    <!-- Preference summary for an app the user has not allowed to use, or to be used by, screen automation. [CHAR LIMIT=45] -->
++    <string name="computer_control_automation_not_allowed">Not allowed</string>
++    <!-- Footer on a target app's screen automation page. [CHAR LIMIT=NONE] -->
++    <string name="computer_control_automation_target_footer">When this is off, no app can see or interact with this app’s screen content through screen automation. When it is on, an assistant still needs your approval for this app.</string>
++</resources>
+diff --git a/src/com/android/settings/spa/app/specialaccess/ComputerControlAgentPageProvider.kt b/src/com/android/settings/spa/app/specialaccess/ComputerControlAgentPageProvider.kt
+index df48a9f..e601076 100644
+--- a/src/com/android/settings/spa/app/specialaccess/ComputerControlAgentPageProvider.kt
++++ b/src/com/android/settings/spa/app/specialaccess/ComputerControlAgentPageProvider.kt
+@@ -83,9 +83,11 @@ import com.android.settingslib.spa.framework.theme.SettingsRadius
+ import com.android.settingslib.spa.framework.theme.SettingsSpace
+ import com.android.settingslib.spa.framework.util.formatString
+ import com.android.settingslib.spa.widget.preference.ListPreferenceOption
++import com.android.settingslib.spa.widget.preference.MainSwitchPreference
+ import com.android.settingslib.spa.widget.preference.Preference
+ import com.android.settingslib.spa.widget.preference.PreferenceModel
+ import com.android.settingslib.spa.widget.preference.Radio2
++import com.android.settingslib.spa.widget.preference.SwitchPreferenceModel
+ import com.android.settingslib.spa.widget.preference.ZeroStatePreference
+ import com.android.settingslib.spa.widget.scaffold.RegularScaffold
+ import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
+@@ -94,6 +96,7 @@ import com.android.settingslib.spa.widget.ui.Footer
+ import com.android.settingslib.spaprivileged.model.app.AppEntry
+ import com.android.settingslib.spaprivileged.model.app.AppListModel
+ import com.android.settingslib.spaprivileged.model.app.PackageManagers
++import com.android.settingslib.spaprivileged.model.app.PackageManagers.hasGrantPermission
+ import com.android.settingslib.spaprivileged.model.app.PackageManagers.hasRequestPermission
+ import com.android.settingslib.spaprivileged.model.app.rememberAppRepository
+ import com.android.settingslib.spaprivileged.model.app.toRoute
+@@ -347,6 +350,11 @@ object ComputerControlAppInfoPageProvider : SettingsPageProvider {
+             android.companion.virtualdevice.flags.Flags.computerControlRoleAssistantRequirement()
+         }
+         val blockAccessForNonAssistantApp = assistantRoleRequirement && !isDefaultAssistant
++        val consentController = rememberContext { ComputerControlConsentController(it, app) }
++        var isApprovedByUser by
++            remember(app.packageName, app.userId) {
++                mutableStateOf(consentController.isApprovedByUser)
++            }
+ 
+         // Custom composable layout for the app info page to support centered app description
+         // without any app version information and custom header layout.
+@@ -417,9 +425,22 @@ object ComputerControlAppInfoPageProvider : SettingsPageProvider {
+ 
+         RegularScaffold(title = stringResource(model.pageTitleResId)) {
+             header()
++            if (perAppConsentEnabled) {
++                MainSwitchPreference(
++                    object : SwitchPreferenceModel {
++                        override val title =
++                            stringResource(R.string.computer_control_automation_allow_agent)
++                        override val checked = { isApprovedByUser }
++                        override val onCheckedChange: (Boolean) -> Unit = { approved ->
++                            consentController.setApprovedByUser(approved)
++                            isApprovedByUser = approved
++                        }
++                    }
++                )
++            }
+             packageInfo.applicationInfo?.let {
+                 if (perAppConsentEnabled) {
+-                    Content(it, !blockAccessForNonAssistantApp)
++                    Content(it, isApprovedByUser && !blockAccessForNonAssistantApp)
+                 } else {
+                     LegacyContent(it, model)
+                 }
+@@ -620,6 +641,12 @@ class ComputerControlAgentPageModel(context: Context) : AppListModel<ComputerCon
+ 
+     fun getSummary(context: Context, app: ApplicationInfo): String {
+         if (perAppConsentEnabled) {
++            if (
++                vdm?.isPackageApprovedToRunComputerControlAutomation(app.packageName, app.userId) !=
++                    true
++            ) {
++                return context.getString(R.string.computer_control_automation_not_allowed)
++            }
+             val count =
+                 vdm?.computerControlConsentManager
+                     ?.getAutomatableAppListForAgent(app.uid, app.packageName)
+@@ -650,8 +677,9 @@ class ComputerControlAgentPageModel(context: Context) : AppListModel<ComputerCon
+         if (!perAppConsentEnabled) {
+             return true
+         }
+-        return vdm?.isPackageApprovedToRunComputerControlAutomation(app.packageName, app.userId) ==
+-            true
++        // List every app that holds the permission, not only approved ones, so that the user can
++        // approve it from its page. The permission is privileged, so these are preinstalled apps.
++        return app.hasGrantPermission(permission)
+     }
+ 
+     override fun transform(
+diff --git a/src/com/android/settings/spa/app/specialaccess/ComputerControlAutomation.kt b/src/com/android/settings/spa/app/specialaccess/ComputerControlAutomation.kt
+index d833394..5c78a53 100644
+--- a/src/com/android/settings/spa/app/specialaccess/ComputerControlAutomation.kt
++++ b/src/com/android/settings/spa/app/specialaccess/ComputerControlAutomation.kt
+@@ -120,6 +120,34 @@ internal class ComputerControlConsentController(
+         consentManager?.clearAutomatableAppListForAgent(app.uid, app.packageName)
+     }
+ 
++    /** Whether the user allowed this app to use screen automation. */
++    val isApprovedByUser: Boolean
++        get() =
++            consentManager?.isPackageApprovedToRunAutomationByUser(app.packageName, app.userId)
++                ?: false
++
++    fun setApprovedByUser(approved: Boolean) {
++        consentManager?.setPackageApprovedToRunAutomationByUser(
++            app.packageName,
++            app.userId,
++            approved,
++        )
++    }
++
++    /** Whether the user allowed this app to be automated. */
++    val isTargetableByUser: Boolean
++        get() =
++            consentManager?.isPackageTargetableForAutomationByUser(app.packageName, app.userId)
++                ?: false
++
++    fun setTargetableByUser(targetable: Boolean) {
++        consentManager?.setPackageTargetableForAutomationByUser(
++            app.packageName,
++            app.userId,
++            targetable,
++        )
++    }
++
+     fun removeAutomatablePackage(targetPackageName: String) {
+         consentManager?.removeAppFromAutomatableAppListForAgent(
+             app.uid,
+diff --git a/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt b/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
+index bd42823..8f5a184 100644
+--- a/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
++++ b/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
+@@ -42,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
+ import androidx.compose.runtime.collectAsState
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableIntStateOf
++import androidx.compose.runtime.mutableStateOf
+ import androidx.compose.runtime.remember
+ import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+@@ -59,12 +60,15 @@ import com.android.settingslib.spa.framework.common.SettingsEntryBuilder
+ import com.android.settingslib.spa.framework.common.SettingsPage
+ import com.android.settingslib.spa.framework.common.SettingsPageProvider
+ import com.android.settingslib.spa.framework.compose.navigator
++import com.android.settingslib.spa.framework.compose.rememberContext
+ import com.android.settingslib.spa.framework.compose.rememberDrawablePainter
+ import com.android.settingslib.spa.framework.theme.SettingsDimension
+ import com.android.settingslib.spa.framework.theme.SettingsSpace
+ import com.android.settingslib.spa.framework.util.formatString
++import com.android.settingslib.spa.widget.preference.MainSwitchPreference
+ import com.android.settingslib.spa.widget.preference.Preference
+ import com.android.settingslib.spa.widget.preference.PreferenceModel
++import com.android.settingslib.spa.widget.preference.SwitchPreferenceModel
+ import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
+ import com.android.settingslib.spaprivileged.model.app.AppEntry
+ import com.android.settingslib.spaprivileged.model.app.AppListModel
+@@ -137,6 +141,9 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+                     .computerControlRoleAssistantRequirement()
+         }
+         val hasItems by listModel.hasItemsFlow.collectAsState()
++        val consentController = rememberContext { ComputerControlConsentController(it, targetApp) }
++        var isTargetableByUser by
++            remember(packageName, userId) { mutableStateOf(consentController.isTargetableByUser) }
+ 
+         val header =
+             @Composable {
+@@ -175,10 +182,27 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+                         )
+                     }
+                 }
++                MainSwitchPreference(
++                    object : SwitchPreferenceModel {
++                        override val title =
++                            stringResource(R.string.computer_control_automation_allow_target)
++                        override val checked = { isTargetableByUser }
++                        override val onCheckedChange: (Boolean) -> Unit = { targetable ->
++                            consentController.setTargetableByUser(targetable)
++                            isTargetableByUser = targetable
++                        }
++                    }
++                )
+             }
+ 
+         val footer =
+             @Composable {
++                Text(
++                    text = stringResource(R.string.computer_control_automation_target_footer),
++                    style = MaterialTheme.typography.bodyMedium,
++                    color = MaterialTheme.colorScheme.onSurfaceVariant,
++                    modifier = Modifier.padding(SettingsDimension.itemPadding),
++                )
+                 if (hasItems && assistantRoleRequirement) {
+                     Column(Modifier.padding(SettingsDimension.paddingSmall)) {
+                         Spacer(modifier = Modifier.height(SettingsSpace.extraSmall4))
+@@ -234,23 +258,33 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+             onDispose { view.viewTreeObserver.removeOnWindowFocusChangeListener(listener) }
+         }
+ 
++        // Show the entry for every app that could be a target, so that the user can allow it from
++        // the target page. Agents and apps without a launcher activity can never be targets.
++        val isPossibleTarget =
++            remember(app) {
++                !app.hasRequestPermission(android.Manifest.permission.ACCESS_COMPUTER_CONTROL) &&
++                    context
++                        .createContextAsUser(UserHandle.of(app.userId), 0)
++                        .packageManager
++                        .getLaunchIntentForPackage(app.packageName) != null
++            }
++        if (!isPossibleTarget) {
++            return
++        }
+         val vdm = remember { context.getSystemService(VirtualDeviceManager::class.java) }
+         val agents = remember(app, reloadState) { getAgentsForTarget(context, app) }
+         val isAlwaysAllowedByAnyAgent = agents.isNotEmpty()
+         val isTargetAllowed =
+-            isAlwaysAllowedByAnyAgent ||
+-                remember(app) {
+-                    vdm?.isPackageTargetableForComputerControlAutomation(
+-                        app.packageName,
+-                        app.userId,
+-                    ) == true
+-                }
+-        if (!isTargetAllowed) {
+-            return
+-        }
+-        val onNavigate = if (isAlwaysAllowedByAnyAgent) navigator(app) else null
++            remember(app, reloadState) {
++                vdm?.isPackageTargetableForComputerControlAutomation(
++                    app.packageName,
++                    app.userId,
++                ) == true
++            }
+         val summary =
+-            if (isAlwaysAllowedByAnyAgent) {
++            if (!isTargetAllowed) {
++                stringResource(R.string.computer_control_automation_not_allowed)
++            } else if (isAlwaysAllowedByAnyAgent) {
+                 context.formatString(
+                     R.string.computer_control_automation_agents_allowed,
+                     "count" to agents.size,
+@@ -258,12 +292,12 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+             } else {
+                 stringResource(R.string.computer_control_automation_ask_every_time)
+             }
++        val onNavigate = navigator(app)
+ 
+         Preference(
+             object : PreferenceModel {
+                 override val title = stringResource(R.string.computer_control_automation_page_title)
+                 override val summary = { summary }
+-                override val enabled = { isAlwaysAllowedByAnyAgent }
+                 override val onClick = onNavigate
+             }
+         )
+diff --git a/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt b/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt
+index f591f74..770a114 100644
+--- a/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt
++++ b/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt
+@@ -32,6 +32,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
+ import com.android.settings.R
+ import com.android.settings.spa.app.specialaccess.ComputerControlAgentPageModel
+ import com.google.common.truth.Truth.assertThat
++import com.android.settingslib.spaprivileged.model.app.userId
+ import org.junit.Before
+ import org.junit.Rule
+ import org.junit.Test
+@@ -87,6 +88,16 @@ class ComputerControlAgentPageProviderTest {
+         return packageInfo.applicationInfo!!
+     }
+ 
++    private fun approve(app: ApplicationInfo) {
++        whenever(
++                virtualDeviceManager.isPackageApprovedToRunComputerControlAutomation(
++                    app.packageName,
++                    app.userId,
++                )
++            )
++            .thenReturn(true)
++    }
++
+     @Test
+     @DisableFlags(android.companion.virtualdevice.flags.Flags.FLAG_COMPUTER_CONTROL_PER_APP_CONSENT)
+     fun getSummary_perAppConsentDisabled_modeAllowed_returnsAlwaysAllowedString() {
+@@ -144,10 +155,29 @@ class ComputerControlAgentPageProviderTest {
+             .isEqualTo(context.getString(R.string.computer_control_automation_ask_every_time))
+     }
+ 
++    @Test
++    @EnableFlags(android.companion.virtualdevice.flags.Flags.FLAG_COMPUTER_CONTROL_PER_APP_CONSENT)
++    fun getSummary_perAppConsentEnabled_notApproved_returnsNotAllowedString() {
++        val app = mockApp("test.app", 123, hasPermission = true)
++        whenever(
++                virtualDeviceManager.isPackageApprovedToRunComputerControlAutomation(
++                    app.packageName,
++                    app.userId,
++                )
++            )
++            .thenReturn(false)
++
++        val summary = listModel.getSummary(context, app)
++
++        assertThat(summary)
++            .isEqualTo(context.getString(R.string.computer_control_automation_not_allowed))
++    }
++
+     @Test
+     @EnableFlags(android.companion.virtualdevice.flags.Flags.FLAG_COMPUTER_CONTROL_PER_APP_CONSENT)
+     fun getSummary_perAppConsentEnabled_noAppsAllowed_returnsNoAppsAllowedString() {
+         val app = mockApp("test.app", 123, hasPermission = true)
++        approve(app)
+         whenever(consentManager.getAutomatableAppListForAgent(app.uid, app.packageName))
+             .thenReturn(arrayOf())
+ 
+@@ -161,6 +191,7 @@ class ComputerControlAgentPageProviderTest {
+     @EnableFlags(android.companion.virtualdevice.flags.Flags.FLAG_COMPUTER_CONTROL_PER_APP_CONSENT)
+     fun getSummary_perAppConsentEnabled_oneAppAllowed_returnsOneAppAllowedString() {
+         val app = mockApp("test.app", 123, hasPermission = true)
++        approve(app)
+         whenever(consentManager.getAutomatableAppListForAgent(app.uid, app.packageName))
+             .thenReturn(arrayOf("target.app"))
+ 
+@@ -173,6 +204,7 @@ class ComputerControlAgentPageProviderTest {
+     @EnableFlags(android.companion.virtualdevice.flags.Flags.FLAG_COMPUTER_CONTROL_PER_APP_CONSENT)
+     fun getSummary_perAppConsentEnabled_multipleAppsAllowed_returnsCountString() {
+         val app = mockApp("test.app", 123, hasPermission = true)
++        approve(app)
+         whenever(consentManager.getAutomatableAppListForAgent(app.uid, app.packageName))
+             .thenReturn(arrayOf("target.app1", "target.app2"))
+ 
+diff --git a/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAutomationTest.kt b/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAutomationTest.kt
+index 9038b5e..c81c220 100644
+--- a/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAutomationTest.kt
++++ b/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAutomationTest.kt
+@@ -28,6 +28,7 @@ import androidx.test.core.app.ApplicationProvider
+ import androidx.test.ext.junit.runners.AndroidJUnit4
+ import com.android.settings.spa.app.specialaccess.ComputerControlConsentController
+ import com.google.common.truth.Truth.assertThat
++import com.android.settingslib.spaprivileged.model.app.userId
+ import org.junit.Before
+ import org.junit.Rule
+ import org.junit.Test
+@@ -125,4 +126,36 @@ class ComputerControlAutomationTest {
+         verify(consentManager)
+             .removeAppFromAutomatableAppListForAgent(app.uid, app.packageName, targetPackage)
+     }
++
++    @Test
++    fun consentController_setApprovedByUser_callsConsentManager() {
++        val app = mockApp("test.app", 123)
++        val controller = ComputerControlConsentController(context, app)
++
++        controller.setApprovedByUser(true)
++
++        verify(consentManager)
++            .setPackageApprovedToRunAutomationByUser(app.packageName, app.userId, true)
++    }
++
++    @Test
++    fun consentController_isApprovedByUser_callsConsentManager() {
++        val app = mockApp("test.app", 123)
++        val controller = ComputerControlConsentController(context, app)
++        whenever(consentManager.isPackageApprovedToRunAutomationByUser(app.packageName, app.userId))
++            .thenReturn(true)
++
++        assertThat(controller.isApprovedByUser).isTrue()
++    }
++
++    @Test
++    fun consentController_setTargetableByUser_callsConsentManager() {
++        val app = mockApp("test.app", 123)
++        val controller = ComputerControlConsentController(context, app)
++
++        controller.setTargetableByUser(false)
++
++        verify(consentManager)
++            .setPackageTargetableForAutomationByUser(app.packageName, app.userId, false)
++    }
+ }
+-- 
+2.53.0
+

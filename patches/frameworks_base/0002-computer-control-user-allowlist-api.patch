@@ -1,0 +1,309 @@
+From 3a4848a30b5b6e1dfb2a8202c09f5e2754cf7f6d Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 7 Nov 2026 00:11:04 +0300
+Subject: [PATCH 2/2] computercontrol: let the user manage the user allowlist
+
+Add four methods to IComputerControlConsentManager to read and change the
+user allowlist added in the previous change:
+
+  isPackageApprovedToRunAutomationByUser / setPackageApprovedToRunAutomationByUser
+  isPackageTargetableForAutomationByUser / setPackageTargetableForAutomationByUser
+
+Like the existing per-agent consent methods they require
+MANAGE_COMPUTER_CONTROL_CONSENT, which is signature-level and held by
+Settings and the consent dialog. Acting on another user also requires
+INTERACT_ACROSS_USERS_FULL. They do nothing while computer_control_access
+is off.
+
+Withdrawing an agent closes its ongoing sessions; withdrawing a target
+closes any session automating it, as removing a per-agent consent entry
+already does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../virtual/VirtualDeviceManager.java         | 44 ++++++++++++
+ .../ComputerControlConsentManager.java        | 30 ++++++++
+ .../IComputerControlConsentManager.aidl       | 25 +++++++
+ .../virtual/VirtualDeviceManagerService.java  | 68 +++++++++++++++++++
+ .../ComputerControlSessionProcessor.java      | 58 ++++++++++++++++
+ 5 files changed, 225 insertions(+)
+
+diff --git a/core/java/android/companion/virtual/VirtualDeviceManager.java b/core/java/android/companion/virtual/VirtualDeviceManager.java
+index 5a035b2ae..ea91345ae 100644
+--- a/core/java/android/companion/virtual/VirtualDeviceManager.java
++++ b/core/java/android/companion/virtual/VirtualDeviceManager.java
+@@ -1817,5 +1817,49 @@ public final class VirtualDeviceManager {
+                 throw e.rethrowFromSystemServer();
+             }
+         }
++
++        @Override
++        public boolean isPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++                int userId) {
++            try {
++                return mConsentManager.isPackageApprovedToRunAutomationByUser(packageName,
++                        userId);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
++        }
++
++        @Override
++        public void setPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++                int userId, boolean approved) {
++            try {
++                mConsentManager.setPackageApprovedToRunAutomationByUser(packageName, userId,
++                        approved);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
++        }
++
++        @Override
++        public boolean isPackageTargetableForAutomationByUser(@NonNull String packageName,
++                int userId) {
++            try {
++                return mConsentManager.isPackageTargetableForAutomationByUser(packageName,
++                        userId);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
++        }
++
++        @Override
++        public void setPackageTargetableForAutomationByUser(@NonNull String packageName,
++                int userId, boolean targetable) {
++            try {
++                mConsentManager.setPackageTargetableForAutomationByUser(packageName, userId,
++                        targetable);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
++        }
+     }
+ }
+diff --git a/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java b/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java
+index 8fbdeb42d..05ec83dee 100644
+--- a/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java
++++ b/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java
+@@ -50,4 +50,34 @@ public interface ComputerControlConsentManager {
+      * Returns the automatable app list for the agent.
+      */
+     String[] getAutomatableAppListForAgent(int agentUid, String agentPackageName);
++
++    /**
++     * Returns whether the user approved the package as a computer control agent. This does not
++     * include approvals that come from the device allowlist.
++     */
++    @RequiresPermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++    boolean isPackageApprovedToRunAutomationByUser(String packageName, int userId);
++
++    /**
++     * Sets whether the user approves the package as a computer control agent. Withdrawing the
++     * approval closes the package's ongoing sessions.
++     */
++    @RequiresPermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++    void setPackageApprovedToRunAutomationByUser(String packageName, int userId,
++            boolean approved);
++
++    /**
++     * Returns whether the user allowed the package to be automated. This does not include
++     * entries that come from the device allowlist.
++     */
++    @RequiresPermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++    boolean isPackageTargetableForAutomationByUser(String packageName, int userId);
++
++    /**
++     * Sets whether the user allows the package to be automated. Withdrawing it closes any
++     * ongoing session automating the package.
++     */
++    @RequiresPermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++    void setPackageTargetableForAutomationByUser(String packageName, int userId,
++            boolean targetable);
+ }
+diff --git a/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl b/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl
+index f481813b8..d778ab6ac 100644
+--- a/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl
++++ b/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl
+@@ -44,4 +44,29 @@ interface IComputerControlConsentManager {
+      * Returns the automatable app list for the agent.
+      */
+     String[] getAutomatableAppListForAgent(int agentUid, String agentPackageName);
++
++    /**
++     * Returns whether the user approved the package as a computer control agent.
++     */
++    @EnforcePermission("MANAGE_COMPUTER_CONTROL_CONSENT")
++    boolean isPackageApprovedToRunAutomationByUser(String packageName, int userId);
++
++    /**
++     * Sets whether the user approves the package as a computer control agent.
++     */
++    @EnforcePermission("MANAGE_COMPUTER_CONTROL_CONSENT")
++    void setPackageApprovedToRunAutomationByUser(String packageName, int userId, boolean approved);
++
++    /**
++     * Returns whether the user allowed the package to be automated.
++     */
++    @EnforcePermission("MANAGE_COMPUTER_CONTROL_CONSENT")
++    boolean isPackageTargetableForAutomationByUser(String packageName, int userId);
++
++    /**
++     * Sets whether the user allows the package to be automated.
++     */
++    @EnforcePermission("MANAGE_COMPUTER_CONTROL_CONSENT")
++    void setPackageTargetableForAutomationByUser(String packageName, int userId,
++            boolean targetable);
+ }
+\ No newline at end of file
+diff --git a/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java b/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java
+index 81eb70ec7..060b0b210 100644
+--- a/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java
++++ b/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java
+@@ -1025,6 +1025,74 @@ public class VirtualDeviceManagerService extends SystemService implements Watchd
+             return mComputerControlSessionProcessor.getAutomatableAppListForAgent(agentUid,
+                     agentPackageName);
+         }
++
++        @Override // Binder call
++        @EnforcePermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++        public boolean isPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++                @UserIdInt int userId) {
++            isPackageApprovedToRunAutomationByUser_enforcePermission();
++            Objects.requireNonNull(packageName);
++            if (!android.companion.virtualdevice.flags.Flags.computerControlAccess()) {
++                return false;
++            }
++            enforceCallerCanManageUser(userId);
++            return Binder.withCleanCallingIdentity(() ->
++                    mComputerControlSessionProcessor.isPackageApprovedToRunAutomationByUser(
++                            packageName, userId));
++        }
++
++        @Override // Binder call
++        @EnforcePermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++        public void setPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++                @UserIdInt int userId, boolean approved) {
++            setPackageApprovedToRunAutomationByUser_enforcePermission();
++            Objects.requireNonNull(packageName);
++            if (!android.companion.virtualdevice.flags.Flags.computerControlAccess()) {
++                return;
++            }
++            enforceCallerCanManageUser(userId);
++            Binder.withCleanCallingIdentity(() ->
++                    mComputerControlSessionProcessor.setPackageApprovedToRunAutomationByUser(
++                            packageName, userId, approved));
++        }
++
++        @Override // Binder call
++        @EnforcePermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++        public boolean isPackageTargetableForAutomationByUser(@NonNull String packageName,
++                @UserIdInt int userId) {
++            isPackageTargetableForAutomationByUser_enforcePermission();
++            Objects.requireNonNull(packageName);
++            if (!android.companion.virtualdevice.flags.Flags.computerControlAccess()) {
++                return false;
++            }
++            enforceCallerCanManageUser(userId);
++            return Binder.withCleanCallingIdentity(() ->
++                    mComputerControlSessionProcessor.isPackageTargetableForAutomationByUser(
++                            packageName, userId));
++        }
++
++        @Override // Binder call
++        @EnforcePermission(android.Manifest.permission.MANAGE_COMPUTER_CONTROL_CONSENT)
++        public void setPackageTargetableForAutomationByUser(@NonNull String packageName,
++                @UserIdInt int userId, boolean targetable) {
++            setPackageTargetableForAutomationByUser_enforcePermission();
++            Objects.requireNonNull(packageName);
++            if (!android.companion.virtualdevice.flags.Flags.computerControlAccess()) {
++                return;
++            }
++            enforceCallerCanManageUser(userId);
++            Binder.withCleanCallingIdentity(() ->
++                    mComputerControlSessionProcessor.setPackageTargetableForAutomationByUser(
++                            packageName, userId, targetable));
++        }
++
++        private void enforceCallerCanManageUser(@UserIdInt int userId) {
++            if (userId != UserHandle.getCallingUserId()) {
++                getContext().enforceCallingOrSelfPermission(
++                        android.Manifest.permission.INTERACT_ACROSS_USERS_FULL,
++                        "Managing computer control for another user");
++            }
++        }
+     }
+ 
+     @DeviceProfile
+diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+index c984e5595..26b08b0b8 100644
+--- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
++++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
+@@ -409,6 +409,64 @@ public final class ComputerControlSessionProcessor {
+         return mAllowlistController.isPackageTargetableForAutomation(packageName, userId);
+     }
+ 
++    /**
++     * Returns whether the user approved the given package as a computer control agent.
++     */
++    public boolean isPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId) {
++        return mAllowlistController.isPackageApprovedToRunAutomationByUser(packageName, userId);
++    }
++
++    /**
++     * Sets whether the user approves the given package as a computer control agent. Withdrawing
++     * the approval closes the package's ongoing sessions.
++     */
++    public void setPackageApprovedToRunAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId, boolean approved) {
++        mAllowlistController.setPackageApprovedToRunAutomationByUser(packageName, userId,
++                approved);
++        if (approved) {
++            return;
++        }
++        synchronized (mSessions) {
++            for (int i = 0; i < mSessions.size(); i++) {
++                ComputerControlSessionImpl session = mSessions.valueAt(i);
++                if (session.getOwnerPackageName().equals(packageName)) {
++                    session.close(CLOSE_REASON_USER_INITIATED);
++                }
++            }
++        }
++    }
++
++    /**
++     * Returns whether the user allowed the given package to be automated.
++     */
++    public boolean isPackageTargetableForAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId) {
++        return mAllowlistController.isPackageTargetableForAutomationByUser(packageName, userId);
++    }
++
++    /**
++     * Sets whether the user allows the given package to be automated. Withdrawing it closes any
++     * ongoing session automating the package.
++     */
++    public void setPackageTargetableForAutomationByUser(@NonNull String packageName,
++            @UserIdInt int userId, boolean targetable) {
++        mAllowlistController.setPackageTargetableForAutomationByUser(packageName, userId,
++                targetable);
++        if (targetable) {
++            return;
++        }
++        synchronized (mSessions) {
++            for (int i = 0; i < mSessions.size(); i++) {
++                ComputerControlSessionImpl session = mSessions.valueAt(i);
++                if (session.isAutomatingPackage(packageName)) {
++                    session.close(CLOSE_REASON_USER_INITIATED);
++                }
++            }
++        }
++    }
++
+     private void startHandlerThreadIfNeeded() {
+         synchronized (mHandlerThreadLock) {
+             if (mHandlerThread != null) {
+-- 
+2.53.0
+
