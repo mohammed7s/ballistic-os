@@ -1,6 +1,17 @@
 # Test installation on Pixel 10 Pro
 
-Status (7 Nov 2026): build succeeded; cloud test signing and transfer in progress.
+Status (7 Nov 2026): cloud test signing succeeded at 00:27:34 UTC; direct download
+started on the ThinkPad at 00:28:04 UTC. Transfer and extraction are not yet verified.
+Destination: `/home/ubuntu/ballistic-images/2026110600/`; log: `transfer.log`,
+tmux session: `ballistic-download`. Factory ZIP: 2,205,435,662 bytes; SHA-256:
+`59ba9701c0ab31ea1989b6c14f7e74d032537a37cd386262d568709d2d006c67`.
+The cloud verified its detached signature against the cloud test signing key.
+The download script repeats SHA-256/signature verification against a separately
+pinned public key, extracts the ZIP, then checks its AVB key hash. It never flashes.
+Signed OTA (1,746,909,726 bytes) and signed target-files (5,172,769,055 bytes) remain
+on the cloud disk under the same release directory. Test keys have a separately
+verified backup on the Latitude. Standalone fastboot 35.0.2 is available on the
+ThinkPad at `~/grapheneos-blazer/platform-tools/fastboot`; the system copy is older.
 No unlock or flash has been performed by this build session.
 
 Follow https://grapheneos.org/install/cli for the exact device procedure.
