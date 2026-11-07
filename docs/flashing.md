@@ -113,3 +113,16 @@ byte-for-byte identical to the verified baseline script (diff exit 0).
 Owner reports the baseline boots successfully and authorized installing this
 modified build; factory flashing wipes again. Awaiting interactive Fastboot and
 physical unlock/relock confirmations. No modified build flash performed yet.
+
+## Modified build flashed and relocked (7 Nov 2026)
+
+Following the owner's installation authorization and physical unlock confirmation,
+fastboot verified Pixel serial 56181FDCH0070R, product blazer, unlocked=yes.
+The patched factory script ran in ThinkPad tmux `ballistic-flash-patched`, using
+fastboot 35.0.2 and explicit ANDROID_SERIAL. It started 02:38:05 UTC and completed
+02:40:10 UTC, rc=0 (2 min 5 s). All 17 super chunks succeeded. Logs/status are
+`/home/ubuntu/ballistic-images/2026110700/flash.log` and `flash-status.txt`.
+After the owner's physical lock confirmation, fastboot verified unlocked=no and
+product blazer, then accepted reboot. Modified build boot, displayed key hash,
+installed build number, on-device regression tests and OTA update testing are
+still pending verification. Do not reflash as part of monitoring.
