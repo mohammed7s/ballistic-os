@@ -1,5 +1,21 @@
 # Test installation on Pixel 10 Pro
 
+## Baseline flashed and relocked (7 Nov 2026)
+
+Owner explicitly authorized wiping/installing plain build 2026110600 and physically
+confirmed unlocking. Fastboot verified serial `56181FDCH0070R`, product `blazer`,
+and unlocked=yes. The verified factory script ran with fastboot 35.0.2 and
+`ANDROID_SERIAL=56181FDCH0070R`, in tmux `ballistic-flash-baseline`.
+It finished rc=0 at 01:45:55 UTC, taking 2 min 4 s; all 17 super chunks succeeded.
+Logs/status: `/home/ubuntu/ballistic-images/2026110600/flash.log` and
+`flash-status.txt`. fwupd was stopped before unlocking to avoid USB interference.
+After the owner confirmed relocking, fastboot verified `unlocked: no`, then
+accepted the reboot command. Welcome-screen boot, displayed AVB fingerprint,
+installed build number and OTA update testing still await verification.
+Do not rerun the flash or unlock the device as part of monitoring.
+
+## Earlier preparation record
+
 Status (7 Nov 2026): cloud test signing succeeded at 00:27:34 UTC; direct download
 started on the ThinkPad at 00:28:04 UTC. The download passed SHA-256 and detached-signature verification on the ThinkPad
 at 01:14:21 UTC. Extraction and the extracted AVB key check passed; the transfer
@@ -22,7 +38,8 @@ ThinkPad at `~/grapheneos-blazer/platform-tools/fastboot`; the system copy is ol
 The extracted flash-all.sh was inspected: it checks blazer, requires fastboot >=35.0.1,
 flashes avb_custom_key, erases userdata/metadata, and exits on errors. The available
 standalone fastboot is 35.0.2. Pixel USB remains absent; connect it before device checks.
-No unlock or flash has been performed by this build session.
+At this preparation stage no unlock or flash had yet been performed; see the
+completed flash record above.
 
 Follow https://grapheneos.org/install/cli for the exact device procedure.
 Device: Pixel 10 Pro (`blazer`). Source tag: `2026110200`; build number:
@@ -80,4 +97,5 @@ Cloud `prepare-download-2026110700` publishes checksums only after sign-status
 reports rc=0. Both jobs already exist; do not start duplicates. The restricted
 ThinkPad download SSH key now points to the patched release directory, so the
 completed baseline transfer script must not be rerun. Baseline files are retained.
-No phone unlock/flash approval has been given.
+At that point approval was pending; the owner subsequently authorized the plain
+baseline only, which was flashed and relocked as recorded above.
