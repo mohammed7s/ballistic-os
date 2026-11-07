@@ -20,12 +20,24 @@ Unsigned artifacts in `/home/build/gos/releases/2026110700/` were verified with
 | `blazer-target_files.zip` | 4543948875 | `1adb63038677020781fdb2b373adf83b199ba6b6a91a63b3f15c41c2fffd008c` |
 | `blazer-otatools.zip` | 536798276 | `be89d856cced592907e265e8a474b167a4ff36e49b7438a696e5049ccefe34f7` |
 
-## Signing: running
+## Signing: passed
 
 Started 01:11:04 UTC using the existing cloud test keys documented in `keys.md`.
 No new keys were generated. `sign.sh`, `sign.log`, and `sign-status.txt` are in the
 job directory. The signing wrapper was updated for the noexec `/dev/shm` fix.
-Signed outputs belong in `releases/2026110700/release-blazer-2026110700/`.
+Signed outputs are in `releases/2026110700/release-blazer-2026110700/`.
+Finished 01:34:07 UTC, rc=0, after 23 min 3 s. Factory signature verified
+against the same cloud test key.
+
+| Signed artifact | Bytes | SHA-256 |
+|---|---:|---|
+| blazer-install-2026110700.zip | 2205552947 | `fac283ab02a6c803121963eebdb45b15b8209f50d7fe9b6bdb3cc615f8fb58db` |
+| blazer-ota_update-2026110700.zip | 1747019091 | `5de2a0714fba67be4b21cd91cfd541b60849ddd169457b5ea21fb4ff9ceff26f` |
+| blazer-target_files.zip | 5172961269 | Not independently recorded yet |
+
+ThinkPad install-ZIP transfer started automatically after checksums were published
+at 01:34:11 UTC; verified at 3% around 01:35 UTC. Download verification and
+extraction remain pending.
 
 ## Android regression tests: focused host run passed with three skips
 
