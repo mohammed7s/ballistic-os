@@ -15,6 +15,31 @@ protects nothing against anyone who can read that folder. Before anything ships 
 matters, make a new set with a typed passphrase (`scripts/sign.sh keygen` without
 `PASSPHRASE_FILE`) and re-flash, which wipes the phone.
 
+## Cloud test exception (7 Nov 2026, owner-authorized)
+
+For the first phone installation, the owner explicitly chose cloud signing with a **new,
+disposable test key set**, and clarified that the Pixel is a test phone. These keys are
+separate from `~/ballistic-keys/blazer/` on the Latitude. The cloud host can access them;
+they must never be promoted to production keys. Switching to another set requires a wipe.
+
+Cloud key store: `/home/build/ballistic-cloud-test-keys/blazer/` on vast.ai instance
+59466158; passphrase file alongside it, mode 600. Certificate CN: `Ballistic Cloud Test`.
+Signing uses the pinned GrapheneOS `script/generate-release.sh`, via the current
+`scripts/sign.sh` copied to `/home/build/logs/cloud-sign-tool.sh`. Log:
+`/home/build/logs/sign-cloud-test.log`. The signed factory image is to be transferred
+directly to the ThinkPad with checksum and signature verification before flashing.
+The general rules below still apply to production keys. The cloud set is the explicit
+exception for this test only. No unlock or flash is authorized until the owner confirms
+backup and gives the final go-ahead.
+
+A separate backup was copied to `~/ballistic-cloud-test-keys/` on the Latitude.
+This is outside both repositories and does not replace `~/ballistic-keys/`.
+
+Cloud test public fingerprints (7 Nov 2026):
+
+- AVB key SHA-256: `9cffde575a2cad010e28e520879877126a1442dec0bd5b838adf616472ab4d9c`
+- Factory signing public key: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILRBEDcA3aZJeLCxFddi6x1DL4aC5y7zlz6eWAbF7J5h`
+
 ## The rules
 
 1. **Keys never go on the build box.** The box is a rented container on someone else's host. It
