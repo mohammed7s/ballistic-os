@@ -117,7 +117,8 @@ release() {
     if [[ -n "${PASSPHRASE_FILE:-}" ]]; then
         # decrypt-keys takes $password; ssh-keygen -Y sign asks through SSH_ASKPASS
         local askpass
-        askpass="$(mktemp /dev/shm/ballistic-askpass.XXXXXXXXXX)"
+        # The helper contains only a file path, not the passphrase. /dev/shm may be noexec.
+        askpass="$(mktemp "$work/.ballistic-askpass.XXXXXXXXXX")"
         trap "rm -f '$askpass'" EXIT
         printf '#!/bin/sh\ncat %q\n' "$PASSPHRASE_FILE" > "$askpass"
         chmod 700 "$askpass"

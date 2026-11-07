@@ -128,3 +128,11 @@ factory image signature against our ssh key and prints the expected boot key has
 - [ ] Check the copies: `sha256sum ~/ballistic-keys/blazer/*` matches on each.
 - [ ] Write the passphrase down on paper, stored apart from the media (it is not recoverable).
 - [ ] Note here where the backups are (location only).
+
+## Container signing pitfall
+
+The cloud host mounts `/dev/shm` with `noexec`. Keys can still be decrypted there,
+but an SSH_ASKPASS script cannot execute there. The unattended signing wrapper
+creates its mode-700 helper in the signing workspace instead; the helper contains
+only the passphrase-file path, and is deleted on exit. If only the final factory
+signature fails, sign and verify the existing install ZIP; do not regenerate the OS.
