@@ -27,7 +27,7 @@ No new keys were generated. `sign.sh`, `sign.log`, and `sign-status.txt` are in 
 job directory. The signing wrapper was updated for the noexec `/dev/shm` fix.
 Signed outputs belong in `releases/2026110700/release-blazer-2026110700/`.
 
-## Android regression tests: host execution started
+## Android regression tests: runner failure; retry active
 
 The separate `test-patched-2026110700` tmux job starts only after successful OS
 compilation. Script/log/status: `tests.sh`, `tests.log`, `tests-status.txt` in the
@@ -44,6 +44,12 @@ atest --host -t --disable-upload-result \
 The test packages and Tradefed dependencies compiled successfully in 5 min 8 s;
 the job entered settings-host-tests at 01:17:37 UTC. Results directory:
 `/tmp/atest_result_build/20261107_011737_81nmnao2`.
+The first host attempt exited rc=5 at 01:19:48 UTC before executing tests.
+Tradefed could not find `adb`; it also logged a missing gRPC provider. Original
+logs/status are preserved. After confirming the job exited, `tests-retry1.sh`
+was started in the same tmux session: `m -j32 adb`, `adb version`, then the same
+focused atest command. Current logs/status are `tests-retry1.log` and
+`tests-retry1-status.txt`. This changes runner prerequisites only, not OS sources.
 No test pass is claimed until the result report confirms execution and counts.
 Compilation of a test package does not mean those tests ran.
 
