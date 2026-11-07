@@ -67,3 +67,17 @@ against the cloud test key hash in `keys.md` and check the installed build numbe
 - This build omits the Updater app (`OFFICIAL_BUILD` unset). Updates must be tested
   through recovery using the matching signed OTA; automatic updates are not set up.
 - The custom OS is still GrapheneOS from stock source. Ballistic patches come later.
+
+## Patched transfer preparation (7 Nov, approximately 01:32 UTC)
+
+Owner requested downloading build 2026110700 too. Pixel USB 18d1:4ee1 is now
+visible on ThinkPad, which has 116 GiB free. Patched signing is still packaging
+its final install ZIP; OTA and signed target-files are already produced.
+A separate `ballistic-download-patched` tmux job on ThinkPad waits for checksums,
+then downloads into `/home/ubuntu/ballistic-images/2026110700/`, verifies the
+pinned factory signature and checksums, extracts and checks the same AVB key.
+Cloud `prepare-download-2026110700` publishes checksums only after sign-status
+reports rc=0. Both jobs already exist; do not start duplicates. The restricted
+ThinkPad download SSH key now points to the patched release directory, so the
+completed baseline transfer script must not be rerun. Baseline files are retained.
+No phone unlock/flash approval has been given.
