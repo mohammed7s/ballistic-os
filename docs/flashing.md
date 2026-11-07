@@ -1,7 +1,13 @@
 # Test installation on Pixel 10 Pro
 
 Status (7 Nov 2026): cloud test signing succeeded at 00:27:34 UTC; direct download
-started on the ThinkPad at 00:28:04 UTC. Transfer and extraction are not yet verified.
+started on the ThinkPad at 00:28:04 UTC. The download passed SHA-256 and detached-signature verification on the ThinkPad
+at 01:14:21 UTC. Extraction and the extracted AVB key check still await confirmation
+because the subsequent SSH connection timed out. The original download began
+00:28:04 UTC and suffered network interruptions; the final resume reused
+1,284,326,400 bytes and reached verification in 508 s. Do not interpret rsync's
+reported 4.3 MiB/s as wire throughput: it includes reused bytes. Overall elapsed
+through verification was 46 min 17 s. Pixel USB was not visible in the latest check.
 Destination: `/home/ubuntu/ballistic-images/2026110600/`; log: `transfer.log`,
 tmux session: `ballistic-download`. Factory ZIP: 2,205,435,662 bytes; SHA-256:
 `59ba9701c0ab31ea1989b6c14f7e74d032537a37cd386262d568709d2d006c67`.
