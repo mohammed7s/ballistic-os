@@ -99,3 +99,17 @@ ThinkPad download SSH key now points to the patched release directory, so the
 completed baseline transfer script must not be rerun. Baseline files are retained.
 At that point approval was pending; the owner subsequently authorized the plain
 baseline only, which was flashed and relocked as recorded above.
+
+## Patched image ready (7 Nov, 02:28:13 UTC)
+
+The modified build 2026110700 install ZIP is fully downloaded and extracted at
+`/home/ubuntu/ballistic-images/2026110700/blazer-install-2026110700/` on ThinkPad.
+SHA-256 and pinned factory signature passed at 02:25:36 UTC; extracted AVB key
+matched `9cffde575a2cad010e28e520879877126a1442dec0bd5b838adf616472ab4d9c`.
+Transfer finished rc=0 at 02:28:13 UTC. ZIP size: 2,205,552,947 bytes. The final
+resume reused 1,946,419,200 bytes and reached verification in 258 seconds;
+rsync's aggregate rate includes reused bytes. The extracted flash-all.sh is
+byte-for-byte identical to the verified baseline script (diff exit 0).
+Owner reports the baseline boots successfully and authorized installing this
+modified build; factory flashing wipes again. Awaiting interactive Fastboot and
+physical unlock/relock confirmations. No modified build flash performed yet.
