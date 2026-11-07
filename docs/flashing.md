@@ -2,8 +2,9 @@
 
 Status (7 Nov 2026): cloud test signing succeeded at 00:27:34 UTC; direct download
 started on the ThinkPad at 00:28:04 UTC. The download passed SHA-256 and detached-signature verification on the ThinkPad
-at 01:14:21 UTC. Extraction and the extracted AVB key check still await confirmation
-because the subsequent SSH connection timed out. The original download began
+at 01:14:21 UTC. Extraction and the extracted AVB key check passed; the transfer
+finished at 01:16:54 UTC with rc=0 (48 min 50 s since the original start).
+The original download began
 00:28:04 UTC and suffered network interruptions; the final resume reused
 1,284,326,400 bytes and reached verification in 508 s. Do not interpret rsync's
 reported 4.3 MiB/s as wire throughput: it includes reused bytes. Overall elapsed
@@ -18,6 +19,9 @@ Signed OTA (1,746,909,726 bytes) and signed target-files (5,172,769,055 bytes) r
 on the cloud disk under the same release directory. Test keys have a separately
 verified backup on the Latitude. Standalone fastboot 35.0.2 is available on the
 ThinkPad at `~/grapheneos-blazer/platform-tools/fastboot`; the system copy is older.
+The extracted flash-all.sh was inspected: it checks blazer, requires fastboot >=35.0.1,
+flashes avb_custom_key, erases userdata/metadata, and exits on errors. The available
+standalone fastboot is 35.0.2. Pixel USB remains absent; connect it before device checks.
 No unlock or flash has been performed by this build session.
 
 Follow https://grapheneos.org/install/cli for the exact device procedure.

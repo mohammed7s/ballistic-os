@@ -27,7 +27,7 @@ No new keys were generated. `sign.sh`, `sign.log`, and `sign-status.txt` are in 
 job directory. The signing wrapper was updated for the noexec `/dev/shm` fix.
 Signed outputs belong in `releases/2026110700/release-blazer-2026110700/`.
 
-## Android regression tests: pending
+## Android regression tests: host execution started
 
 The separate `test-patched-2026110700` tmux job starts only after successful OS
 compilation. Script/log/status: `tests.sh`, `tests.log`, `tests-status.txt` in the
@@ -41,6 +41,9 @@ atest --host -t --disable-upload-result \
   SettingsRoboTests:ComputerControlAutomationTest
 ```
 
+The test packages and Tradefed dependencies compiled successfully in 5 min 8 s;
+the job entered settings-host-tests at 01:17:37 UTC. Results directory:
+`/tmp/atest_result_build/20261107_011737_81nmnao2`.
 No test pass is claimed until the result report confirms execution and counts.
 Compilation of a test package does not mean those tests ran.
 
