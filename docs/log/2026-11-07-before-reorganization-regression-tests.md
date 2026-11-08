@@ -1,0 +1,95 @@
+# Patched build 2026110700: validation record
+
+Source: tag `2026110200` plus the eleven-patch snapshot from recipe commit
+`6b936cf` (patch contents unchanged from reviewed `d02b997`). Exact provenance,
+patch snapshot, applied revisions and logs are on instance 59466158 in
+`/home/build/ballistic-patch-build-2026110700/`.
+
+## Compilation: passed
+
+Supervisor job `ballistic-patched-2026110700` finished at 2026-11-07 01:09:56 UTC,
+`rc=0 stage=complete`, after 36 minutes 8 seconds including finalization.
+Used `m -j32 target-files-package otatools-package`, preserving existing outputs,
+vendor files and baseline release `2026110600`.
+
+Unsigned artifacts in `/home/build/gos/releases/2026110700/` were verified with
+`sha256sum -c` against the job's `SHA256SUMS`:
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `blazer-target_files.zip` | 4543948875 | `1adb63038677020781fdb2b373adf83b199ba6b6a91a63b3f15c41c2fffd008c` |
+| `blazer-otatools.zip` | 536798276 | `be89d856cced592907e265e8a474b167a4ff36e49b7438a696e5049ccefe34f7` |
+
+## Signing: passed
+
+Started 01:11:04 UTC using the existing cloud test keys documented in `keys.md`.
+No new keys were generated. `sign.sh`, `sign.log`, and `sign-status.txt` are in the
+job directory. The signing wrapper was updated for the noexec `/dev/shm` fix.
+Signed outputs are in `releases/2026110700/release-blazer-2026110700/`.
+Finished 01:34:07 UTC, rc=0, after 23 min 3 s. Factory signature verified
+against the same cloud test key.
+
+| Signed artifact | Bytes | SHA-256 |
+|---|---:|---|
+| blazer-install-2026110700.zip | 2205552947 | `fac283ab02a6c803121963eebdb45b15b8209f50d7fe9b6bdb3cc615f8fb58db` |
+| blazer-ota_update-2026110700.zip | 1747019091 | `5de2a0714fba67be4b21cd91cfd541b60849ddd169457b5ea21fb4ff9ceff26f` |
+| blazer-target_files.zip | 5172961269 | Not independently recorded yet |
+
+ThinkPad install-ZIP transfer started automatically after checksums were published
+at 01:34:11 UTC; verified at 3% around 01:35 UTC. Download verification and
+extraction remain pending.
+
+## Android regression tests: focused host run passed with three skips
+
+The separate `test-patched-2026110700` tmux job starts only after successful OS
+compilation. Script/log/status: `tests.sh`, `tests.log`, `tests-status.txt` in the
+job directory. It preserves the recorded build number and timestamp, uses `-j32`,
+and first compiles `VirtualDeviceServicesTests`, `SettingsRoboTests`,
+`atest-tradefed`, and `tradefed`. It then attempts only these host tests:
+
+```sh
+atest --host -t --disable-upload-result \
+  SettingsRoboTests:ComputerControlAgentPageProviderTest \
+  SettingsRoboTests:ComputerControlAutomationTest
+```
+
+The test packages and Tradefed dependencies compiled successfully in 5 min 8 s;
+the job entered settings-host-tests at 01:17:37 UTC. Results directory:
+`/tmp/atest_result_build/20261107_011737_81nmnao2`.
+The first host attempt exited rc=5 at 01:19:48 UTC before executing tests.
+Tradefed could not find `adb`; it also logged a missing gRPC provider. Original
+logs/status are preserved. After confirming the job exited, `tests-retry1.sh`
+was started in the same tmux session: `m -j32 adb`, `adb version`, then the same
+focused atest command. Current logs/status are `tests-retry1.log` and
+`tests-retry1-status.txt`. This changes runner prerequisites only, not OS sources.
+Retry finished at 01:22:38 UTC, rc=0 stage=complete. Actual host results:
+
+| Class | Passed | Failed | Assumption skips |
+|---|---:|---:|---:|
+| ComputerControlAgentPageProviderTest | 4 | 0 | 3 |
+| ComputerControlAutomationTest | 7 | 0 | 0 |
+
+The three skipped methods cover per-app-consent-disabled summaries and carry
+`@DisableFlags(FLAG_COMPUTER_CONTROL_PER_APP_CONSENT)`. They are not passes.
+Results: `/tmp/atest_result_build/20261107_012158_zp4jho1m/`.
+Adding the missing adb dependency allowed the runner to complete; no source patch
+was needed. Tradefed's summary mentions one device, but this was a host Robolectric
+invocation, not execution on the Pixel.
+Compilation of a test package does not mean those tests ran.
+
+`VirtualDeviceServicesTests` is Android instrumentation, not a host test. After a
+compatible patched test device is available, run its focused classes:
+`ComputerControlUserAllowlistTest`, `ComputerControlAllowlistControllerTest`, and
+`ComputerControlSessionProcessorTest`. Account for platform-signature matching;
+never install an APK signed with source-tree test keys as though it matched the
+cloud-signed platform key.
+
+## On-device behavior: not validated
+
+No flashing or unlocking is authorized by these build/test jobs. Obtain the
+owner's final backup-and-go confirmation first. After installation, execute the
+runtime checklist in `patches.md`, including empty defaults, user/signer binding,
+protected targets, v4 rejection/v5 foreground requirements, Allow once/Always
+allow, revocation while consent or construction is pending, role/AppOp/permission
+withdrawal, user isolation, persistence, and concurrent Back/creation/revocation.
+Compilation and host tests alone do not validate Computer Control on-device.
