@@ -1,6 +1,6 @@
-From 68faa821eaba9b7ca525fb4a3defc30c118333bb Mon Sep 17 00:00:00 2001
+From 566c5d3ee3463c3c055150a13d3759f0802748d9 Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 00:09:29 +0300
+Date: Sun, 8 Nov 2026 14:04:16 +0300
 Subject: [PATCH 2/2] cur: include the Computer Control consent app
 
 Set RELEASE_PACKAGE_COMPUTER_CONTROL so that build/make adds the

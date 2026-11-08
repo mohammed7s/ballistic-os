@@ -1,30 +1,35 @@
-From edb02cb1e2bde6465e9b4ceb7ea1c15b7b0c2149 Mon Sep 17 00:00:00 2001
+From 2f8b1202d73cb37c63a5a4e17746c6cb377a638d Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 00:09:29 +0300
-Subject: [PATCH 1/2] cp2a: enable Computer Control and its per-app consent
+Date: Sun, 8 Nov 2026 14:04:15 +0300
+Subject: [PATCH 1/2] cp2a: enable Computer Control with per-app consent and
+ version 5
 
-Turn on android.companion.virtualdevice.flags.computer_control_access and
-computer_control_per_app_consent, READ_ONLY like the other Computer Control
-flags in this release config.
+Turn on these android.companion.virtualdevice.flags, READ_ONLY like the
+other Computer Control flags already enabled in this release config:
 
-Without computer_control_access the ACCESS_COMPUTER_CONTROL permission is
-not defined and VirtualDeviceManagerService refuses every session request.
-Without computer_control_per_app_consent the user cannot approve or revoke
-an agent per target app, and the Settings pages that manage this are
-hidden.
+ - computer_control_access: without it ACCESS_COMPUTER_CONTROL is not
+   defined and VirtualDeviceManagerService refuses every session request.
+ - computer_control_per_app_consent: without it the user cannot approve
+   or revoke an agent per target app, and the Settings pages that manage
+   this are hidden.
+ - computer_control_support_v5: the service advertises version 5, whose
+   sessions require a foreground window. The frameworks/base changes
+   reject version 4 requests so that this check cannot be avoided.
 
 This only makes the feature reachable. No app can use it until the user
-approves an agent and its target apps in Settings, and the agent must
-also hold the assistant role (computer_control_role_assistant_requirement
-is already enabled here).
+allows an agent and its target apps in Settings, and the agent must also
+hold the assistant role (computer_control_role_assistant_requirement is
+already enabled here).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../computer_control_access_flag_values.textproto           | 6 ++++++
  .../computer_control_per_app_consent_flag_values.textproto  | 6 ++++++
- 2 files changed, 12 insertions(+)
+ .../computer_control_support_v5_flag_values.textproto       | 6 ++++++
+ 3 files changed, 18 insertions(+)
  create mode 100644 aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_access_flag_values.textproto
  create mode 100644 aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_per_app_consent_flag_values.textproto
+ create mode 100644 aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_support_v5_flag_values.textproto
 
 diff --git a/aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_access_flag_values.textproto b/aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_access_flag_values.textproto
 new file mode 100644
@@ -47,6 +52,18 @@ index 0000000..2245fc0
 +flag_value {
 +  package: "android.companion.virtualdevice.flags"
 +  name: "computer_control_per_app_consent"
++  state: ENABLED
++  permission: READ_ONLY
++}
+diff --git a/aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_support_v5_flag_values.textproto b/aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_support_v5_flag_values.textproto
+new file mode 100644
+index 0000000..a4e0dcf
+--- /dev/null
++++ b/aconfig/cp2a/android.companion.virtualdevice.flags/computer_control_support_v5_flag_values.textproto
+@@ -0,0 +1,6 @@
++flag_value {
++  package: "android.companion.virtualdevice.flags"
++  name: "computer_control_support_v5"
 +  state: ENABLED
 +  permission: READ_ONLY
 +}

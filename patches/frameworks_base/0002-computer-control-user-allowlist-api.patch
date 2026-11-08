@@ -1,7 +1,7 @@
-From 3a4848a30b5b6e1dfb2a8202c09f5e2754cf7f6d Mon Sep 17 00:00:00 2001
+From c9352ddfc72dc23ea0f5edf59ac465c28833c35f Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 00:11:04 +0300
-Subject: [PATCH 2/2] computercontrol: let the user manage the user allowlist
+Date: Sun, 8 Nov 2026 14:04:15 +0300
+Subject: [PATCH 2/5] computercontrol: let the user manage the user allowlist
 
 Add four methods to IComputerControlConsentManager to read and change the
 user allowlist added in the previous change:
@@ -29,7 +29,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  5 files changed, 225 insertions(+)
 
 diff --git a/core/java/android/companion/virtual/VirtualDeviceManager.java b/core/java/android/companion/virtual/VirtualDeviceManager.java
-index 5a035b2ae..ea91345ae 100644
+index 5a035b2..ea91345 100644
 --- a/core/java/android/companion/virtual/VirtualDeviceManager.java
 +++ b/core/java/android/companion/virtual/VirtualDeviceManager.java
 @@ -1817,5 +1817,49 @@ public final class VirtualDeviceManager {
@@ -83,7 +83,7 @@ index 5a035b2ae..ea91345ae 100644
      }
  }
 diff --git a/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java b/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java
-index 8fbdeb42d..05ec83dee 100644
+index 8fbdeb4..05ec83d 100644
 --- a/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java
 +++ b/core/java/android/companion/virtual/computercontrol/ComputerControlConsentManager.java
 @@ -50,4 +50,34 @@ public interface ComputerControlConsentManager {
@@ -122,7 +122,7 @@ index 8fbdeb42d..05ec83dee 100644
 +            boolean targetable);
  }
 diff --git a/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl b/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl
-index f481813b8..d778ab6ac 100644
+index f481813..d778ab6 100644
 --- a/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl
 +++ b/core/java/android/companion/virtual/computercontrol/IComputerControlConsentManager.aidl
 @@ -44,4 +44,29 @@ interface IComputerControlConsentManager {
@@ -157,7 +157,7 @@ index f481813b8..d778ab6ac 100644
  }
 \ No newline at end of file
 diff --git a/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java b/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java
-index 81eb70ec7..060b0b210 100644
+index 81eb70e..060b0b2 100644
 --- a/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java
 +++ b/services/companion/java/com/android/server/companion/virtual/VirtualDeviceManagerService.java
 @@ -1025,6 +1025,74 @@ public class VirtualDeviceManagerService extends SystemService implements Watchd
@@ -236,7 +236,7 @@ index 81eb70ec7..060b0b210 100644
  
      @DeviceProfile
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
-index c984e5595..26b08b0b8 100644
+index c984e55..26b08b0 100644
 --- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 @@ -409,6 +409,64 @@ public final class ComputerControlSessionProcessor {

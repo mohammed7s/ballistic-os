@@ -1,10 +1,18 @@
-From 3fa3fc0d8b046ffab13451add6b972f5d249cfa6 Mon Sep 17 00:00:00 2001
+From e657dd8e3bd03cf816a226c1aba69a3fab21176e Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 02:42:39 +0300
-Subject: [PATCH] computercontrol: validate parcelled session parameters at the
- service boundary
+Date: Sun, 8 Nov 2026 14:04:15 +0300
+Subject: [PATCH 4/5] computercontrol: validate parcelled session parameters at
+ the service boundary
 
-Enforce v5 notification content, target count and attribution constraints independently of client-side builders. Add crafted-Parcel regression cases and update supported-version test fixtures.
+Session parameters arrive over binder and can be written directly with
+Parcel, bypassing the client-side Builder checks. Enforce in the service:
+the session version, the notification and its nested content, the target
+count limit and attribution.
+
+Add regression tests that send crafted Parcels, and update the
+supported-version test fixtures.
+
+Test: atest VirtualDeviceServicesTests:ComputerControlSessionProcessorTest
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -13,7 +21,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 134 insertions(+), 4 deletions(-)
 
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
-index 191f63293..ab8fb63e5 100644
+index 191f632..ab8fb63 100644
 --- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 @@ -255,7 +255,40 @@ public final class ComputerControlSessionProcessor {
@@ -58,7 +66,7 @@ index 191f63293..ab8fb63e5 100644
          Binder.withCleanCallingIdentity(() -> {
              if (!isComputerControlAvailableForUser(request.ownerUserId())) {
 diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
-index 39a12a8e1..cf7bdd392 100644
+index 39a12a8..cf7bdd3 100644
 --- a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
 +++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
 @@ -65,6 +65,7 @@ import android.content.pm.UserInfo;

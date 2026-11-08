@@ -1,7 +1,7 @@
-From 5d6cc0ce34a91aa3c4a12afe37cdac4faf812442 Mon Sep 17 00:00:00 2001
+From f69c5add5da169d19eb8ada0956f9c0645eef5bc Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 00:11:04 +0300
-Subject: [PATCH 1/2] computercontrol: consult a user allowlist next to
+Date: Sun, 8 Nov 2026 14:04:15 +0300
+Subject: [PATCH 1/5] computercontrol: consult a user allowlist next to
  DeviceConfig
 
 Computer Control decides which apps may own a session and which apps may
@@ -37,14 +37,14 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../ComputerControlAllowlistController.java   |  88 ++++-
  .../ComputerControlSessionProcessor.java      |   1 +
- .../ComputerControlUserAllowlist.java         | 371 ++++++++++++++++++
- .../ComputerControlUserAllowlistTest.java     | 161 ++++++++
- 4 files changed, 616 insertions(+), 5 deletions(-)
+ .../ComputerControlUserAllowlist.java         | 355 ++++++++++++++++++
+ .../ComputerControlUserAllowlistTest.java     | 145 +++++++
+ 4 files changed, 584 insertions(+), 5 deletions(-)
  create mode 100644 services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java
  create mode 100644 tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java
 
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
-index 67dee3c46..8951fb1a2 100644
+index 67dee3c..8951fb1 100644
 --- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
 @@ -59,6 +59,7 @@ import com.android.server.pm.permission.PermissionManagerServiceInterface;
@@ -221,7 +221,7 @@ index 67dee3c46..8951fb1a2 100644
              boolean changed = false;
              // If the removed package was an agent, remove it from the agent map
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
-index 82fe6749b..c984e5595 100644
+index 82fe674..c984e55 100644
 --- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 @@ -618,6 +618,7 @@ public final class ComputerControlSessionProcessor {
@@ -234,26 +234,10 @@ index 82fe6749b..c984e5595 100644
              for (int i = 0; i < mSessions.size(); i++) {
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java
 new file mode 100644
-index 000000000..c89ecd157
+index 0000000..4c6774f
 --- /dev/null
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlist.java
-@@ -0,0 +1,371 @@
-+/*
-+ * Copyright (C) 2026 The Ballistic Authors
-+ *
-+ * Licensed under the Apache License, Version 2.0 (the "License");
-+ * you may not use this file except in compliance with the License.
-+ * You may obtain a copy of the License at
-+ *
-+ *      http://www.apache.org/licenses/LICENSE-2.0
-+ *
-+ * Unless required by applicable law or agreed to in writing, software
-+ * distributed under the License is distributed on an "AS IS" BASIS,
-+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+ * See the License for the specific language governing permissions and
-+ * limitations under the License.
-+ */
-+
+@@ -0,0 +1,355 @@
 +package com.android.server.companion.virtual.computercontrol;
 +
 +import android.annotation.NonNull;
@@ -611,26 +595,10 @@ index 000000000..c89ecd157
 +}
 diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java
 new file mode 100644
-index 000000000..30367d833
+index 0000000..396f974
 --- /dev/null
 +++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlUserAllowlistTest.java
-@@ -0,0 +1,161 @@
-+/*
-+ * Copyright (C) 2026 The Ballistic Authors
-+ *
-+ * Licensed under the Apache License, Version 2.0 (the "License");
-+ * you may not use this file except in compliance with the License.
-+ * You may obtain a copy of the License at
-+ *
-+ *      http://www.apache.org/licenses/LICENSE-2.0
-+ *
-+ * Unless required by applicable law or agreed to in writing, software
-+ * distributed under the License is distributed on an "AS IS" BASIS,
-+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+ * See the License for the specific language governing permissions and
-+ * limitations under the License.
-+ */
-+
+@@ -0,0 +1,145 @@
 +package com.android.server.companion.virtual.computercontrol;
 +
 +import static org.junit.Assert.assertFalse;

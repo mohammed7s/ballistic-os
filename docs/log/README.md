@@ -11,6 +11,10 @@ for decisions and status. No historical job or approval should be assumed active
 - [2026-11-07-before-reorganization-readme.md](2026-11-07-before-reorganization-readme.md)
 - [2026-11-07-before-reorganization-regression-tests.md](2026-11-07-before-reorganization-regression-tests.md)
 
+- [2026-11-07-patch-design-and-review-history.md](2026-11-07-patch-design-and-review-history.md):
+  the eleven-patch design document, review rounds and decision log
+
 ## Experiments and handoff entries
 
-No additional session records yet. New build and device evidence belongs here.
+- [2026-11-08-patch-series-recut.md](2026-11-08-patch-series-recut.md): eleven patches re-cut
+  to eight, with the mapping and verification

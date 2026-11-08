@@ -31,7 +31,9 @@ execute it. Confirm test APK/platform signing compatibility before any installat
 - Run focused `ComputerControlUserAllowlistTest`, `ComputerControlAllowlistControllerTest` and
   `ComputerControlSessionProcessorTest` on a compatible device where feasible.
 
-Detailed expected behavior and race cases are in [patches.md](patches.md), especially §§8–10.
+Detailed expected behavior and race cases are in the [reviewer guide](patches.md), §9.
+The recorded build used the eleven-patch form of the series. The current eight patches have the
+same final source apart from removed licence comments and have not been compiled themselves.
 
 ## Integration and updates
 

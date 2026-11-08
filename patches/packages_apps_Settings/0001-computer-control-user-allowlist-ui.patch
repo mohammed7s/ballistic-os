@@ -1,6 +1,6 @@
-From d6a9d8fb2a9c0fa67487fbf8b4fe05f3a95029e4 Mon Sep 17 00:00:00 2001
+From c2453cf275a975fa9ef2c3e998e613ee9a321912 Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 00:09:45 +0300
+Date: Sun, 8 Nov 2026 14:04:15 +0300
 Subject: [PATCH] Screen automation: let the user allow agents and target apps
 
 With the user allowlists in frameworks/base, the screen automation pages
@@ -9,52 +9,46 @@ automation and which apps may be automated.
 
  - Special app access > Screen automation lists every app that holds
    ACCESS_COMPUTER_CONTROL (a privileged permission, so only preinstalled
-   apps), not only those already allowed; unallowed ones read
+   apps), not only those already allowed. Unallowed ones read
    "Not allowed".
  - An agent's page gets a main switch, "Allow screen automation", off by
    default. The list of apps it may automate is disabled while it is off.
  - App info > Screen automation is shown for every launchable app that is
    not itself an agent. Its page gets a main switch, "Allow screen
-   automation of this app", off by default.
+   automation of this app", off by default. Its footer says that an
+   assistant still needs the user's approval, that turning the switch
+   off clears earlier approvals for this app, and that device policy may
+   also allow screen automation.
+ - Settings and the consent dialog app are never offered as targets:
+   their App info entry and direct target page are hidden, matching the
+   service-side rejection in frameworks/base.
 
 Both switches only open a gate: the agent must still be the default
 digital assistant, and each target still needs the user's approval in the
 consent dialog. Turning a switch off closes the sessions that depend on
 it.
 
+Test: atest SettingsRoboTests:ComputerControlAgentPageProviderTest
+Test: atest SettingsRoboTests:ComputerControlAutomationTest
+
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- res/values/strings_computer_control_ext.xml   | 26 ++++++++
- .../ComputerControlAgentPageProvider.kt       | 34 ++++++++++-
- .../ComputerControlAutomation.kt              | 28 +++++++++
- .../ComputerControlTargetAppPageProvider.kt   | 60 +++++++++++++++----
- .../ComputerControlAgentPageProviderTest.kt   | 32 ++++++++++
+ res/values/strings_computer_control_ext.xml   | 11 ++++
+ .../ComputerControlAgentPageProvider.kt       | 34 +++++++++-
+ .../ComputerControlAutomation.kt              | 28 ++++++++
+ .../ComputerControlTargetAppPageProvider.kt   | 65 +++++++++++++++----
+ .../ComputerControlAgentPageProviderTest.kt   | 32 +++++++++
  .../ComputerControlAutomationTest.kt          | 33 ++++++++++
- 6 files changed, 197 insertions(+), 16 deletions(-)
+ 6 files changed, 187 insertions(+), 16 deletions(-)
  create mode 100644 res/values/strings_computer_control_ext.xml
 
 diff --git a/res/values/strings_computer_control_ext.xml b/res/values/strings_computer_control_ext.xml
 new file mode 100644
-index 0000000..bc4cb2d
+index 0000000..7ea47d8
 --- /dev/null
 +++ b/res/values/strings_computer_control_ext.xml
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,11 @@
 +<?xml version="1.0" encoding="utf-8"?>
-+<!--
-+  Copyright (C) 2026 The Ballistic Authors
-+
-+  Licensed under the Apache License, Version 2.0 (the "License");
-+  you may not use this file except in compliance with the License.
-+  You may obtain a copy of the License at
-+
-+       http://www.apache.org/licenses/LICENSE-2.0
-+
-+  Unless required by applicable law or agreed to in writing, software
-+  distributed under the License is distributed on an "AS IS" BASIS,
-+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+  See the License for the specific language governing permissions and
-+  limitations under the License.
-+-->
 +<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
 +    <!-- Main switch on an agent app's screen automation page. Controls whether the user allows the app to use screen automation at all. [CHAR LIMIT=60] -->
 +    <string name="computer_control_automation_allow_agent">Allow screen automation</string>
@@ -63,7 +57,7 @@ index 0000000..bc4cb2d
 +    <!-- Preference summary for an app the user has not allowed to use, or to be used by, screen automation. [CHAR LIMIT=45] -->
 +    <string name="computer_control_automation_not_allowed">Not allowed</string>
 +    <!-- Footer on a target app's screen automation page. [CHAR LIMIT=NONE] -->
-+    <string name="computer_control_automation_target_footer">When this is off, no app can see or interact with this app’s screen content through screen automation. When it is on, an assistant still needs your approval for this app.</string>
++    <string name="computer_control_automation_target_footer">Allow an assistant to request screen automation of this app. The assistant still needs your approval. Turning this off removes your allowance and clears previous approvals for this app. Device policy may also allow screen automation.</string>
 +</resources>
 diff --git a/src/com/android/settings/spa/app/specialaccess/ComputerControlAgentPageProvider.kt b/src/com/android/settings/spa/app/specialaccess/ComputerControlAgentPageProvider.kt
 index df48a9f..e601076 100644
@@ -190,7 +184,7 @@ index d833394..5c78a53 100644
          consentManager?.removeAppFromAutomatableAppListForAgent(
              app.uid,
 diff --git a/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt b/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
-index bd42823..8f5a184 100644
+index bd42823..686e008 100644
 --- a/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
 +++ b/src/com/android/settings/spa/app/specialaccess/ComputerControlTargetAppPageProvider.kt
 @@ -42,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
@@ -217,7 +211,15 @@ index bd42823..8f5a184 100644
  import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
  import com.android.settingslib.spaprivileged.model.app.AppEntry
  import com.android.settingslib.spaprivileged.model.app.AppListModel
-@@ -137,6 +141,9 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+@@ -102,6 +106,7 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+     @Composable
+     override fun Page(arguments: Bundle?) {
+         val packageName = arguments?.getString(PACKAGE_NAME)!!
++        if (isPermissionManagementPackage(packageName)) return
+         val userId = arguments.getInt(USER_ID)
+         val packageInfo =
+             remember(packageName, userId) {
+@@ -137,6 +142,9 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
                      .computerControlRoleAssistantRequirement()
          }
          val hasItems by listModel.hasItemsFlow.collectAsState()
@@ -227,7 +229,7 @@ index bd42823..8f5a184 100644
  
          val header =
              @Composable {
-@@ -175,10 +182,27 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+@@ -175,10 +183,27 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
                          )
                      }
                  }
@@ -255,7 +257,15 @@ index bd42823..8f5a184 100644
                  if (hasItems && assistantRoleRequirement) {
                      Column(Modifier.padding(SettingsDimension.paddingSmall)) {
                          Spacer(modifier = Modifier.height(SettingsSpace.extraSmall4))
-@@ -234,23 +258,33 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+@@ -218,6 +243,7 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+     /** A preference entry for the target app's app info page. */
+     @Composable
+     fun InfoPageEntryItem(app: ApplicationInfo) {
++        if (isPermissionManagementPackage(app.packageName)) return
+         val context = LocalContext.current
+         var reloadState by remember { mutableIntStateOf(0) }
+         val view = LocalView.current
+@@ -234,23 +260,33 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
              onDispose { view.viewTreeObserver.removeOnWindowFocusChangeListener(listener) }
          }
  
@@ -301,7 +311,7 @@ index bd42823..8f5a184 100644
                  context.formatString(
                      R.string.computer_control_automation_agents_allowed,
                      "count" to agents.size,
-@@ -258,12 +292,12 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
+@@ -258,12 +294,12 @@ object ComputerControlTargetAppPageProvider : SettingsPageProvider {
              } else {
                  stringResource(R.string.computer_control_automation_ask_every_time)
              }
@@ -315,6 +325,13 @@ index bd42823..8f5a184 100644
                  override val onClick = onNavigate
              }
          )
+@@ -357,3 +393,6 @@ class ComputerControlTargetAppViewModel(context: Context, targetApp: Application
+     ViewModel() {
+     val model = ComputerControlTargetAppListModel(context, targetApp)
+ }
++
++private fun isPermissionManagementPackage(packageName: String): Boolean =
++    packageName == "com.android.settings" || packageName == "com.android.virtualdevicemanager"
 diff --git a/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt b/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt
 index f591f74..770a114 100644
 --- a/tests/robotests/src/com/android/settings/applications/specialaccess/screenautomation/ComputerControlAgentPageProviderTest.kt

@@ -1,86 +1,84 @@
 # ballistic-os
 
-**The GrapheneOS build for [Ballistic](https://github.com/mohammed7s/ballistic): a pinned GrapheneOS
-release plus a small set of patches that put Android 17's assistant gates in the user's hands.**
+**Patches for GrapheneOS that let the device owner choose which assistant may use Android 17's
+Computer Control, and on which apps.**
 
-This repository contains no Android source. It holds the recipe: which GrapheneOS tag to build,
-the patches applied on top, the SELinux and device-config additions, and the scripts that build,
-sign and publish updates. Everything here is intended to be readable by a GrapheneOS maintainer in
-one sitting.
+Android 17 includes Computer Control: an assistant app operates other apps on a hidden virtual
+display, with the user's consent for each app. On GrapheneOS it is compiled off. The apps
+allowed to use it also come from Google's remote configuration (DeviceConfig), which GrapheneOS
+never receives. These patches switch the feature on and give that decision to the owner, in
+Settings.
 
-Status: **not started** (November 2026). Created so the layout and intent are public; the first
-build (plan step 4) comes after the assistant's agent loop proves out on the emulator.
-Apache 2.0. Not affiliated with or endorsed by GrapheneOS.
+This repository holds a pinned GrapheneOS tag, the patches as `git format-patch` files and the
+build scripts. It contains no Android source and no assistant.
 
-## Relationship to the other repository
+## If you never open the setting, nothing changes
 
-| Repo | Contains | Ships as |
-|---|---|---|
-| [`ballistic`](https://github.com/mohammed7s/ballistic) | the assistant app, agent logic, emulator harness, design docs | an APK that runs on any Android; on stock GrapheneOS once the gates below are upstream |
-| `ballistic-os` (this) | the build recipe: GrapheneOS tag + patches + scripts | a signed GrapheneOS image and OTA stream for Pixels, until the patches land upstream |
+Both new lists start empty. No app can open a session until the owner allows an assistant and
+at least one target app. Today only a preinstalled app can hold the permission, so on a stock
+image there may be no app to allow at all.
 
-Design, specification and decisions live in `ballistic/docs/`; this repo links to them rather than
-duplicating them.
+## The patches
 
-## What the patches do
+Eight patches in three repositories, against GrapheneOS tag `2026110200`.
 
-Android 17 already contains the machinery for a system-level assistant. On GrapheneOS it is
-present and dead: gated by feature flags that are off in the release config and by allowlists
-fetched from Google's DeviceConfig, which GrapheneOS never receives. The patches are deltas, not
-replacements, so they survive whatever Google ships for the DMA in Android 18:
+| Group | Repository | Patch | What it does |
+|---|---|---|---|
+| Turn it on | build/release | 0001 | Enable Computer Control, per-app consent and version 5 |
+| | build/release | 0002 | Build the AOSP consent dialog app |
+| Owner control | frameworks/base | 0001 | Check an owner-edited list next to the DeviceConfig list |
+| | frameworks/base | 0002 | System API so Settings can edit that list |
+| | packages/apps/Settings | 0001 | Switches to allow an assistant and to allow each target app |
+| Hardening | frameworks/base | 0003 | Settings can never be automated; withdrawal wins over a session being created |
+| | frameworks/base | 0004 | Validate session parameters inside the service |
+| | frameworks/base | 0005 | Recheck permissions and policy before a session starts |
 
-1. **Computer Control gate** (written, not yet built; [`docs/patches.md`](docs/patches.md)):
-   enable the access, per-app-consent and version-5 flags; include the
-   AOSP consent dialog app; add per-user lists of allowed agents and allowed target apps, empty by
-   default and edited only in Settings, consulted next to the DeviceConfig allowlists
-   (`allowed_session_owner_apps`, `allowed_automatable_apps`) rather than replacing them; keep the
-   assistant-role requirement and the per-target consent dialog. Require version 5, exclude Settings
-   and the consent app as targets, validate parcelled parameters, and recheck authorization before
-   publishing a session. Use a pending reservation to keep construction outside the session lock.
-   No sepolicy change is needed.
-2. **AppFunctions gate**: the same user-managed allowlist for callers.
-3. **OnDeviceIntelligence provider**: let the user choose the on-device model service, as they
-   choose a keyboard, instead of a hard-coded OEM component.
-4. **Device config**: the Ballistic app as a privileged app with the permissions above allowlisted;
-   TPU access for it; branding; Updater pointed at our OTA server.
+Each patch is explained in the [reviewer guide](docs/patches.md). Apply order and commands are
+in the [patch index](patches/README.md).
 
-Each patch is one commit, generated with `git format-patch`, against the pinned tag. Nothing
-touches GrapheneOS's hardening, keystore, verified boot or attestation.
+## What stays the same
 
-## Planned layout
+- The permission stays privileged, so only preinstalled, allowlisted apps can request it.
+- The assistant must hold the assistant role, which the user chooses.
+- The AOSP consent dialog still asks per target app.
+- The DeviceConfig path is kept and still works where it exists.
+- No change to SELinux policy, verified boot, keystore, attestation or GrapheneOS hardening.
 
-```
-MANIFEST            the GrapheneOS tag this release builds from
-patches/            one directory per GrapheneOS repo; apply order in patches/README.md
-  build_release/    0001 flags, 0002 consent app, 0003 version 5
-  frameworks_base/  0001–0006 allowlist, API, revocation, reservation, validation, authorization
-  packages_apps_Settings/   0001 switches, 0002 protected targets and footer
-  device_google_*/  later: product config, priv-app allowlist
-scripts/
-  sync.sh           repo init at the pinned tag, apply patches, report conflicts
-  build.sh          build the release variant
-  sign.sh           sign with keys that are never in this repo
-  ota.sh            publish factory image + OTA metadata
-  ci/               rebase bot: new GrapheneOS tag → sync → build → capability suite → publish
-docs/
-  patches.md        design and review notes for the patch set
-  keys.md           key generation and storage procedure
-  flashing.md       flash, relock, recovery; the bricking pitfalls
-```
+## Open question for maintainers
 
-## Build (when it exists)
+Because the permission stays privileged, only an assistant built into the image can use it.
+Merging these patches alone would not let a user install an assistant and allow it. Should a
+user-installed assistant be able to receive this access from Settings instead? The options and
+their risks are in the [FAQ](docs/faq.md#can-a-user-installed-assistant-use-this).
+
+## Status
+
+8 November 2026. An image with this change set compiled, was signed with disposable test keys,
+and was flashed and relocked on a test Pixel 10 Pro. That build used the series before it was
+re-cut into eight patches; the source differs only by removed licence comments. Focused Settings
+host tests passed 11 cases with 3 skipped. Boot identity and on-device Computer Control behaviour are not yet verified.
+This is not a release. Evidence is in the [validation record](docs/regression-tests.md).
+
+## Build
+
+Read the [build procedure](docs/build.md) first. Signing happens on a separate machine, as
+described in [keys](docs/keys.md).
 
 ```bash
-scripts/sync.sh        # checks out GrapheneOS at $(cat MANIFEST), applies patches/
-scripts/build.sh       # ~2 h on a 64 GB machine
-scripts/sign.sh        # on the isolated signer
-scripts/ota.sh         # publish
+scripts/sync.sh     # GrapheneOS at the tag in MANIFEST, with patches/ applied
+scripts/build.sh
 ```
 
-Requirements: a 64 GB+ RAM build machine, ~500 GB of disk, GrapheneOS's documented build
-prerequisites, offline key storage.
+Then follow the [installation procedure](docs/flashing.md).
 
-## Contributing
+## More
 
-Review of the patch set from anyone who knows GrapheneOS's tree is the most valuable contribution.
-Issues welcome. Maintainer: [@mohammed7s](https://github.com/mohammed7s).
+[Reviewer guide](docs/patches.md) · [FAQ](docs/faq.md) · [Roadmap](docs/PLAN.md) ·
+[Current context](docs/CONTEXT.md) · [Source research](docs/FACTS.md) ·
+[Dated records](docs/log/README.md)
+
+This work started alongside [Ballistic](https://github.com/mohammed7s/ballistic), an assistant
+app. The patches name no app and work with any assistant that passes the checks above.
+
+Apache-2.0. Maintainer: [@mohammed7s](https://github.com/mohammed7s).
+Not affiliated with or endorsed by GrapheneOS.

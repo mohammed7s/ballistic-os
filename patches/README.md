@@ -1,38 +1,41 @@
 # Patches
 
-The Computer Control gate for Ballistic for GrapheneOS: eleven patches, one commit each, made with
-`git format-patch` against GrapheneOS tag **`2026110200`**. Design, privacy argument, verified
-facts and the first-build checklist: [`../docs/patches.md`](../docs/patches.md).
+Owner-controlled Computer Control for GrapheneOS: eight patches, one commit each, made with
+`git format-patch` against GrapheneOS tag **`2026110200`**. What each patch does and why:
+[reviewer guide](../docs/patches.md). Common questions: [FAQ](../docs/faq.md).
 
-Status: applied cleanly with `git am` to fresh clones of the tag; not yet compiled or run.
+Status: all eight apply with `git am` to the tag. An image built from the earlier eleven-patch
+form of this series compiled, was signed, flashed and relocked; its source differs only by
+removed licence comments. On-device behaviour is not yet verified; see
+[validation](../docs/regression-tests.md). The re-cut is recorded in
+[the log](../docs/log/2026-11-08-patch-series-recut.md).
 
 ## Apply order
 
-| # | Directory here | GrapheneOS repo | Path in the tree | Patch | Lines | Change |
-|---|---|---|---|---|---|---|
-| 1 | `build_release/` | `platform_build_release` | `build/release` | `0001-computer-control-flags.patch` | 55 | 2 files, +12 |
-| 2 | `build_release/` | `platform_build_release` | `build/release` | `0002-computer-control-consent-app.patch` | 34 | 1 file, +4 |
-| 3 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0001-computer-control-user-allowlist.patch` | 781 | 4 files, +616 −5 |
-| 4 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0002-computer-control-user-allowlist-api.patch` | 309 | 5 files, +225 |
-| 5 | `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` | `0001-computer-control-user-allowlist-ui.patch` | 444 | 6 files, +197 −16 |
-| 6 | `build_release/` | `platform_build_release` | `build/release` | `0003-computer-control-version-five.patch` | 26 | 1 file, +6 |
-| 7 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0003-computer-control-revocation-hardening.patch` | 742 | 7 files, +296 −53 |
-| 8 | `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` | `0002-computer-control-protected-targets.patch` | 53 | 2 files, +6 −1 |
-| 9 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0004-computer-control-creation-reservation.patch` | 510 | 2 files, +210 −121 |
-| 10 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0005-computer-control-server-parameter-validation.patch` | 237 | 2 files, +134 −4 |
-| 11 | `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` | `0006-computer-control-final-authorization.patch` | 374 | 4 files, +162 −27 |
+| Directory here | GrapheneOS repository | Path in the tree |
+|---|---|---|
+| `build_release/` | `platform_build_release` | `build/release` |
+| `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` |
+| `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` |
 
-Within a repository the numbered order matters (4 depends on 3). Across repositories the order
-does not matter for applying, but all eleven are needed for a working build: 5 calls the API from 4,
-and 3–5 do nothing without the flags from 1. Patch 7 requires version 5, enabled by 6.
-The follow-up preserves one-time consent, rechecks grants before creation, removes deleted-user
-records, and prevents automation of the permission editors. Patches 9–11 correct the creation
-locking from 7, validate untrusted Parcel parameters at the server boundary, and recheck mutable
-permissions and policy before publishing a session. Do not stop at patch 7: its construction lock
-introduces a WindowManager lock-order cycle, resolved by 9.
+Within a repository, apply in numbered order. Across repositories the order does not matter for
+applying, but a working build needs all eight: Settings 0001 calls the API from
+frameworks/base 0002, and nothing works without the flags from build/release 0001. Unlike the
+earlier eleven-patch form, no intermediate frameworks/base state contains the lock-order cycle
+that a later patch had to remove. Intermediate commits have not been compiled one by one.
 
-No `system/sepolicy` patch: the existing policy already lets system_server use `/dev/uinput`
-(`docs/patches.md` §3.3).
+| Patch | File | Lines | Change |
+|---|---|---|---|
+| build/release 0001 | `0001-computer-control-flags.patch` | 72 | 3 files, +18 |
+| build/release 0002 | `0002-computer-control-consent-app.patch` | 34 | 1 file, +4 |
+| frameworks/base 0001 | `0001-computer-control-user-allowlist.patch` | 749 | 4 files, +584 −5 |
+| frameworks/base 0002 | `0002-computer-control-user-allowlist-api.patch` | 309 | 5 files, +225 |
+| frameworks/base 0003 | `0003-computer-control-revocation-and-creation.patch` | 1105 | 7 files, +465 −133 |
+| frameworks/base 0004 | `0004-computer-control-parameter-validation.patch` | 245 | 2 files, +134 −4 |
+| frameworks/base 0005 | `0005-computer-control-final-authorization.patch` | 385 | 4 files, +162 −27 |
+| Settings 0001 | `0001-computer-control-user-allowlist-ui.patch` | 461 | 6 files, +187 −16 |
+
+No `system/sepolicy` patch is needed (reviewer guide §8.4).
 
 ## Apply
 

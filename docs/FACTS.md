@@ -9,7 +9,10 @@ All **verified** at GrapheneOS tag `2026110200` (line numbers at the tag; framew
 stated). Inferences are labelled. The patch set built on these answers is in
 `ballistic-os/patches/` (eleven patches: build/release ×3, frameworks/base ×6, packages/apps/Settings
 ×2), applied with `git am` to fresh clones; **not compiled or run yet**. Design and first-build
-checklist: `ballistic-os/docs/patches.md`.
+checklist: `ballistic-os/docs/patches.md`. *Superseded 8 Nov 2026:* the series was re-cut into
+eight patches with the same final source apart from licence comments; section numbers below
+refer to the earlier design document, now
+[log/2026-11-07-patch-design-and-review-history.md](log/2026-11-07-patch-design-and-review-history.md).
 
 - **Flags (verified).** `core/java/android/companion/virtual/flags/flags.aconfig`:
   `computer_control_access` :91, `computer_control_per_app_consent` :233,

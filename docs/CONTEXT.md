@@ -1,6 +1,6 @@
 # OS context and current decisions
 
-Updated 7 November 2026. This is the handoff for the platform repository. App decisions and
+Updated 8 November 2026. This is the handoff for the platform repository. App decisions and
 agent development belong in [Ballistic](https://github.com/mohammed7s/ballistic).
 
 ## Scope
@@ -26,11 +26,19 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 - Production keys stay off rented build hosts. The recorded cloud-signing exception used
   disposable test keys for a test phone; it is not a production procedure.
 - Public images and an OTA service are not established. The build script omits Updater.
+- **8 Nov 2026: series re-cut from eleven patches to eight.** Fixes to earlier patches were
+  folded into them, so no intermediate state carries the lock-order cycle. The three
+  "Ballistic Authors" licence headers were removed to match GrapheneOS's headerless new files.
+  The final source is otherwise identical. Mapping and checks:
+  [log](log/2026-11-08-patch-series-recut.md).
+- **8 Nov 2026: this repository stays generic.** The README and reviewer docs describe an
+  owner-controlled gate for any assistant. Ballistic is named once, as the origin.
 
 ## Recorded validation
 
 The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe commit `6b936cf`
-(patch contents from reviewed `d02b997`) built as `2026110700`.
+(patch contents from reviewed `d02b997`) built as `2026110700`. The current eight-patch series
+has the same final source apart from removed licence comments; it has not been compiled itself.
 Compilation and signing passed. Focused Settings host tests passed 11 cases with 3 assumption
 skips; instrumentation package compilation did not mean its device tests ran.
 
@@ -59,10 +67,15 @@ its [platform contract](https://github.com/mohammed7s/ballistic/blob/main/docs/P
 ## Open questions
 
 - Will GrapheneOS accept an owner-managed Computer Control gate?
+- Should the permission stay privileged, or become grantable to a user-installed assistant from
+  Settings? With it privileged, merging the patches helps only assistants shipped in the image.
+  Options are in [faq.md](faq.md#can-a-user-installed-assistant-use-this); no patch yet.
+- Is the consent app already in GrapheneOS? The source at the tag says no; a 1 October 2026
+  forum post reports it present after release 2026092500. Check on an unmodified device.
 - Do all pending-construction/revocation and cross-user cases hold on-device?
 - How should the assistant be packaged and permission-allowlisted for this development image?
 - What separate AppFunctions access delta is justified?
 - What image distribution, signing and update policy is appropriate if development becomes public?
 
-Source facts: [FACTS.md](FACTS.md). Patch rationale: [patches.md](patches.md).
+Source facts: [FACTS.md](FACTS.md). Patch rationale: [patches.md](patches.md). Reviewer questions: [faq.md](faq.md).
 Keep new decisions here and dated build/session details in [log/](log/README.md).

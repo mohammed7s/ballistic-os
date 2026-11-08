@@ -1,10 +1,21 @@
-From 3e3376079a21b932c042beb322fe0d280d170aa4 Mon Sep 17 00:00:00 2001
+From 3b1b94c7566f7603d36906ac4f5bf2a4178b3f8d Mon Sep 17 00:00:00 2001
 From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
-Date: Sat, 7 Nov 2026 02:46:05 +0300
-Subject: [PATCH] computercontrol: recheck captured caller permissions and
- policy before publication
+Date: Sun, 8 Nov 2026 14:04:15 +0300
+Subject: [PATCH 5/5] computercontrol: recheck caller permissions and policy
+ before publishing a session
 
-Revalidate assistant role, notification and access permissions, managed-device policy and the Computer Control AppOp before and after construction. Preserve Allow once for default mode, reject explicit denial, and do not convert a normal agent into a test agent after permission withdrawal.
+Permissions and policy can change while a session is being constructed
+or while its consent dialog is open. Using the caller's captured UID,
+package and user, recheck before construction and again before
+publication: the assistant role, the notification and Computer Control
+permissions, managed-device policy and the Computer Control AppOp.
+
+"Allow once" still applies to the targets approved by the current dialog,
+but it cannot override an explicit AppOp denial. A normal agent that
+loses its permission is not reclassified as a test agent.
+
+Test: atest VirtualDeviceServicesTests:ComputerControlSessionProcessorTest
+Test: atest VirtualDeviceServicesTests:ComputerControlAllowlistControllerTest
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -15,7 +26,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  4 files changed, 162 insertions(+), 27 deletions(-)
 
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
-index 9d4c00265..98f8a759d 100644
+index 9d4c002..98f8a75 100644
 --- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistController.java
 @@ -17,8 +17,8 @@
@@ -71,7 +82,7 @@ index 9d4c00265..98f8a759d 100644
              if (!isPackageAutomatable(target, owner, pm)
                      || (!approvedTargets.contains(target)
 diff --git a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
-index ab8fb63e5..432162c81 100644
+index ab8fb63..432162c 100644
 --- a/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 +++ b/services/companion/java/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessor.java
 @@ -194,6 +194,8 @@ public final class ComputerControlSessionProcessor {
@@ -169,7 +180,7 @@ index ab8fb63e5..432162c81 100644
                  dispatchSessionCreationFailed(mRequest,
                          ComputerControlSession.ERROR_PERMISSION_DENIED);
 diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistControllerTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistControllerTest.java
-index b0d0693d1..23d9feef9 100644
+index b0d0693..23d9fee 100644
 --- a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistControllerTest.java
 +++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlAllowlistControllerTest.java
 @@ -199,6 +199,56 @@ public class ComputerControlAllowlistControllerTest {
@@ -255,7 +266,7 @@ index b0d0693d1..23d9feef9 100644
  
      @Test
 diff --git a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
-index cf7bdd392..cb28fadc6 100644
+index cf7bdd3..cb28fad 100644
 --- a/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
 +++ b/tests/VirtualDeviceTests/services/src/com/android/server/companion/virtual/computercontrol/ComputerControlSessionProcessorTest.java
 @@ -281,6 +281,8 @@ public class ComputerControlSessionProcessorTest {

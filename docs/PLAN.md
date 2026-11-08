@@ -13,7 +13,7 @@ Deliverable: a reproducible build and validated installation/update path.
 
 ## 2. Validate the Computer Control gate
 
-The eleven-patch set is implemented. Complete device tests for empty defaults, per-user/signer
+The patch set is implemented (eight patches since the 8 November re-cut). Complete device tests for empty defaults, per-user/signer
 binding, target exclusions, consent, version requirements, revocation and concurrent construction.
 Existing source evidence answers the sepolicy question; runtime checks still matter.
 Deliverable: repeatable device results, including denied and revoked access, not compilation alone.
