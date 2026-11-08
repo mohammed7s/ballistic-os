@@ -3,6 +3,10 @@
 Short answers to the questions a GrapheneOS maintainer is likely to ask. Patch details are in
 the [reviewer guide](patches.md); its §8 has the source references.
 
+This repository covers OS-level permissions only: which assistant may use Computer Control, on
+which apps, under the owner's control. How an assistant behaves inside apps, and how apps treat
+it, is outside its scope.
+
 ## Why not just enable the flags and use the existing allowlist?
 
 The existing allowlist comes from DeviceConfig, Google's remote configuration, which GrapheneOS
@@ -45,31 +49,57 @@ and act on every app, on the owner's own screen. Computer Control is narrower:
 - It works on a separate virtual display rather than the owner's screen.
 - Settings and the consent app can never be targets.
 - The assistant must be the default digital assistant.
-- Its input is identifiable, as the next answers explain.
 
 The patches do not change accessibility services.
 
 ## Can a user-installed assistant use this?
 
-Not with these patches. `ACCESS_COMPUTER_CONTROL` is `internal|privileged` in AOSP, and the
+Not yet. This is an open problem, and these patches do not attempt to solve it.
+
+**Where things stand.** `ACCESS_COMPUTER_CONTROL` is `internal|privileged` in AOSP, and the
 patches keep that. Only an app built into the image and listed in a privileged-permission
 allowlist can hold it. Merging the patches would therefore help only assistants that GrapheneOS,
 or someone building their own image, chooses to ship.
 
-The options, for maintainers to weigh:
+**The aim.** The owner should be able to choose any assistant, including one they installed
+themselves, without the device becoming less secure than it is today.
 
-1. **Keep it privileged.** This matches AOSP's trust model and adds nothing new to review. Users
-   would only benefit if an assistant were shipped in the image.
-2. **Let the owner grant it to an installed assistant from Settings.** The role, both switches
-   and the consent dialog would still apply. This needs a further patch to how the permission is
-   granted, plus a review of the service's checks, which treat an app without the granted
-   permission as a test agent. The risk is an owner being talked into granting it to a malicious
-   app. The mitigations are the several deliberate steps required, the session notification and
-   per-target consent. That is a smaller grant than an accessibility service, which an owner can
-   already give to any installed app.
+**The precedent.** USB debugging already gives the owner powers at least this broad. Through
+it, a connected computer can inject input into any app, capture the screen and grant
+permissions. Android ships that safely by putting it behind steps only the owner can take:
+unhide developer options, turn on USB debugging, then approve the computer's key on the phone.
+It is off by default and the owner can revoke it at any time. AOSP's own Computer Control check
+also already accepts a test-only agent that holds the permission through the debugging shell.
+The code therefore already allows a non-privileged agent, as long as the owner set it up.
 
-This repository implements option 1. We would like the maintainers' view before writing
-option 2.
+**What a solution must keep.**
+
+- Only the owner can grant access, through deliberate steps in Settings. No app can grant it to
+  itself, and automation cannot reach those steps.
+- Off by default and revocable at any time. Revoking closes running sessions.
+- Visible while in use.
+- The owner switches and the per-target consent dialog still apply.
+- Nothing changes for owners who never use it.
+- An owner talked into it by a malicious app is at least as well protected as with an
+  accessibility service today.
+
+**One candidate approach.** Android can grant a permission to whichever app holds a role. At
+the tag, the assistant role already grants four permissions declared `internal|role`,
+`signature|role` or `signature|module|role`, and the role is not limited to system apps. Adding
+`role` to the protection level of `ACCESS_COMPUTER_CONTROL`, and listing it under the assistant
+role in PermissionController, would give the access to whichever app the owner makes the default
+digital assistant. Choosing another assistant would remove it. The service reads the grant
+through a normal permission check, so its other checks would not need to change.
+
+Open questions about that approach:
+
+- Is choosing a default assistant a deliberate enough step for this power? It may need an extra
+  confirmation, in the way developer options must be unlocked before USB debugging appears.
+- Should Android's restricted-settings protection, which already makes sideloaded apps wait for
+  extra owner approval before they can become accessibility services, apply here too?
+- Does PermissionController, a separately updated module, need the same change in every build?
+
+Nothing here is written or tested. We would like the maintainers' view first.
 
 ## Can an assistant use automation to give itself more access?
 
@@ -95,13 +125,6 @@ The owner lists are per user, and changes in one user do not close another user'
 service already checks managed-device policy, and frameworks/base 0005 rechecks it before a
 session starts. The patches do not change how work profiles are handled. Neither cross-user nor
 work-profile behaviour has been tested on a device.
-
-## Can apps tell they are being automated?
-
-Yes. The virtual touchscreen and keypad are named after the agent's package. They carry vendor
-0x0000, product 0xCC03 or 0xCC01 and `BUS_VIRTUAL`, and sit on a non-default display. Any app
-can read this from the input device of an event. The patches do not hide this, and they should
-not: an app that wants to refuse automation can.
 
 ## Is the consent app already in GrapheneOS?
 

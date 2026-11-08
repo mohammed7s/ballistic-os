@@ -35,7 +35,8 @@ Deliverable: traceable updates with test evidence and a recovery procedure.
 
 ## 5. Upstream proposal
 
-Ask about an owner-managed Computer Control allowlist, the preferred privileged-assistant path,
+Ask about an owner-managed Computer Control allowlist, how a user-installed assistant could be
+given access without weakening security (the open problem in faq.md),
 and expected integration with future third-party assistant APIs. Bring reviewed patches and
 runtime evidence. Ask early; do not assume acceptance. Submit the Computer Control gate as a
 small independent proposal, with no assistant or model bundled into the ask.

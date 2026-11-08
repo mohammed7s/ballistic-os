@@ -67,9 +67,14 @@ its [platform contract](https://github.com/mohammed7s/ballistic/blob/master/docs
 ## Open questions
 
 - Will GrapheneOS accept an owner-managed Computer Control gate?
-- Should the permission stay privileged, or become grantable to a user-installed assistant from
-  Settings? With it privileged, merging the patches helps only assistants shipped in the image.
-  Options are in [faq.md](faq.md#can-a-user-installed-assistant-use-this); no patch yet.
+- **Open problem, 8 Nov 2026:** let the owner give access to a user-installed assistant without
+  making the device less secure. With the permission privileged, merging the patches helps only
+  assistants shipped in the image. The aim is owner control on the USB-debugging precedent:
+  powerful, off by default, granted only through deliberate owner steps. Requirements and a
+  role-based candidate are in [faq.md](faq.md#can-a-user-installed-assistant-use-this); no
+  patch yet, maintainers' view wanted first.
+- Scope: this repository covers OS permissions only. How assistants behave in apps, and how
+  apps treat them, belongs to the assistant, not here.
 - Is the consent app already in GrapheneOS? The source at the tag says no; a 1 October 2026
   forum post reports it present after release 2026092500. Check on an unmodified device.
 - Do all pending-construction/revocation and cross-user cases hold on-device?

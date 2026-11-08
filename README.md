@@ -44,12 +44,21 @@ in the [patch index](patches/README.md).
 - The DeviceConfig path is kept and still works where it exists.
 - No change to SELinux policy, verified boot, keystore, attestation or GrapheneOS hardening.
 
-## Open question for maintainers
+## Open problem: assistants the user installs
 
 Because the permission stays privileged, only an assistant built into the image can use it.
-Merging these patches alone would not let a user install an assistant and allow it. Should a
-user-installed assistant be able to receive this access from Settings instead? The options and
-their risks are in the [FAQ](docs/faq.md#can-a-user-installed-assistant-use-this).
+Merging these patches alone would not let a user install an assistant of their choice and allow
+it.
+
+The aim is for the owner to be able to choose any assistant, including one they install
+themselves, without making the device less secure. Android already has a precedent: USB
+debugging. It grants powers as broad as this one, including input into any app, screen capture
+and permission grants, behind deliberate steps that only the owner can take. Computer Control
+could follow the same principle: powerful, off by default, and fully in the owner's hands.
+
+We have not solved this, and these patches do not attempt it. The requirements and one candidate
+approach are in the [FAQ](docs/faq.md#can-a-user-installed-assistant-use-this). We would like
+the maintainers' view before writing a patch.
 
 ## Status
 
