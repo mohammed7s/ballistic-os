@@ -73,8 +73,10 @@ its [platform contract](https://github.com/mohammed7s/ballistic/blob/master/docs
   powerful, off by default, granted only through deliberate owner steps. Requirements and a
   role-based candidate are in [faq.md](faq.md#can-a-user-installed-assistant-use-this); no
   patch yet, maintainers' view wanted first.
-- Scope: this repository covers OS permissions only. How assistants behave in apps, and how
-  apps treat them, belongs to the assistant, not here.
+- Scope: this repository covers OS permissions only. How assistants behave in apps belongs to
+  the assistant. Whether apps accept automation is for app and assistant developers to settle.
+  The OS takes no side: the FAQ records what apps can see, with precedents, and the patches
+  leave it as AOSP built it.
 - Is the consent app already in GrapheneOS? The source at the tag says no; a 1 October 2026
   forum post reports it present after release 2026092500. Check on an unmodified device.
 - Do all pending-construction/revocation and cross-user cases hold on-device?

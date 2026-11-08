@@ -42,6 +42,8 @@ in the [patch index](patches/README.md).
 - The assistant must hold the assistant role, which the user chooses.
 - The AOSP consent dialog still asks per target app.
 - The DeviceConfig path is kept and still works where it exists.
+- Apps can still tell a session's input from the owner's. The patches take no side on whether
+  apps accept automation; see the [FAQ](docs/faq.md#can-apps-tell-they-are-being-automated).
 - No change to SELinux policy, verified boot, keystore, attestation or GrapheneOS hardening.
 
 ## Open problem: assistants the user installs

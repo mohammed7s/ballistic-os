@@ -4,8 +4,9 @@ Short answers to the questions a GrapheneOS maintainer is likely to ask. Patch d
 the [reviewer guide](patches.md); its §8 has the source references.
 
 This repository covers OS-level permissions only: which assistant may use Computer Control, on
-which apps, under the owner's control. How an assistant behaves inside apps, and how apps treat
-it, is outside its scope.
+which apps, under the owner's control. How an assistant behaves inside apps, and whether apps
+accept it, is outside its scope. The FAQ does record what apps can see, so reviewers know the
+patches take no side.
 
 ## Why not just enable the flags and use the existing allowlist?
 
@@ -49,6 +50,8 @@ and act on every app, on the owner's own screen. Computer Control is narrower:
 - It works on a separate virtual display rather than the owner's screen.
 - Settings and the consent app can never be targets.
 - The assistant must be the default digital assistant.
+- Its input is identifiable, as [a later answer](#can-apps-tell-they-are-being-automated)
+  explains.
 
 The patches do not change accessibility services.
 
@@ -125,6 +128,37 @@ The owner lists are per user, and changes in one user do not close another user'
 service already checks managed-device policy, and frameworks/base 0005 rechecks it before a
 session starts. The patches do not change how work profiles are handled. Neither cross-user nor
 work-profile behaviour has been tested on a device.
+
+## Can apps tell they are being automated?
+
+Yes. The virtual touchscreen and keypad are named after the agent's package. They carry vendor
+0x0000, product 0xCC03 or 0xCC01 and `BUS_VIRTUAL`, and sit on a non-default display. Any app
+can read this from the input device of an event, so it can tell one assistant from another.
+This is how AOSP builds it, and the patches do not change it.
+
+**The OS takes no side.** The patches neither hide automation from apps nor give apps new ways
+to refuse it. Whether an app accepts an assistant is for the app's developers and the
+assistant's developers to settle. That question is outside the scope of this series.
+
+**Precedents.**
+
+- **GrapheneOS and app attestation.** GrapheneOS does not disguise itself as stock Android to
+  pass app checks. It identifies itself honestly and asks app developers to allow it. An
+  identifiable assistant is in the same position: it has to persuade apps rather than hide.
+- **Accessibility services.** Apps can already list the enabled services, and since Android 14
+  can mark views as hidden from services that are not accessibility tools. Android lets apps
+  decide about automation, and the OS does not override them.
+- **Doubao Phone Assistant.** This is from press reports, not checked against primary sources.
+  In December 2025 ByteDance's assistant shipped on ZTE's Nubia M153 with OS-level input
+  injection. Within days WeChat, Alipay, Taobao and banks logged users out, and WeChat control
+  was withdrawn on 3 December. In June 2026 Tencent reportedly opened an agent channel to
+  several phone makers on its own terms. Deep OS access did not make apps accept the assistant.
+  What changed things was an agreement with the app's developer.
+
+**Is it an open problem?** Yes, for assistants, not for the OS. Some apps will refuse automated
+input, especially chat, payment and banking apps. Whether they come to accept assistants depends
+on assistant developers earning that trust, through agreements, interfaces that apps provide
+for the purpose, or shared standards. These patches neither help nor hinder that.
 
 ## Is the consent app already in GrapheneOS?
 
