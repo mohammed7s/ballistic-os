@@ -1,7 +1,7 @@
 # Platform roadmap
 
 This repo delivers the OS capability provider. The assistant has its own
-[app roadmap](https://github.com/mohammed7s/ballistic/blob/main/docs/PLAN.md).
+[app roadmap](https://github.com/mohammed7s/ballistic/blob/master/docs/PLAN.md).
 Historical app-plan OS steps 4, 5, 9 and 10 now live here.
 
 ## 1. Build, sign and verify the development platform

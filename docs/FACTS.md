@@ -1,6 +1,6 @@
 # OS source research
 
-Preserved from Ballistic CONTEXT §4c, checked against the pinned source tag on 7 November 2026. Build-status statements below describe the research session, not the latest validation. See [current context](CONTEXT.md) and [validation](regression-tests.md). Original § references refer to the [historical handoff](https://github.com/mohammed7s/ballistic/blob/main/docs/log/2026-11-07-before-reorganization-context.md).
+Preserved from Ballistic CONTEXT §4c, checked against the pinned source tag on 7 November 2026. Build-status statements below describe the research session, not the latest validation. See [current context](CONTEXT.md) and [validation](regression-tests.md). Original § references refer to the [historical handoff](https://github.com/mohammed7s/ballistic/blob/master/docs/log/2026-11-07-before-reorganization-context.md).
 
 ## Computer Control gate
  source answers and patch set (7 Nov 2026)

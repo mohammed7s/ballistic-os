@@ -62,7 +62,7 @@ These are historical records, not assertions that their tmux jobs or cloud hosts
 5. Prepare an upstream discussion with clear threat model, patch scope and device evidence.
 
 Do not infer authority to flash again from a dated test record. App integration must also satisfy
-its [platform contract](https://github.com/mohammed7s/ballistic/blob/main/docs/PLATFORM.md).
+its [platform contract](https://github.com/mohammed7s/ballistic/blob/master/docs/PLATFORM.md).
 
 ## Open questions
 
