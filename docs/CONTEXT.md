@@ -86,8 +86,9 @@ These are historical records, not assertions that their tmux jobs or cloud hosts
 
 **Cloud build hold, 21 November:** the Contabo source sync was stopped after finding a
 process-hiding library loaded into system processes and matching persistence files. Do not
-build or sign artifacts from that host's current installation. Clean reinstall approval is
-pending; retain the VPS and storage as instructed. See the [evidence and recovery boundary](log/2026-11-21-contabo-build-hold.md).
+build or sign artifacts from that host's current installation. The owner approved a clean
+reinstall and confirmed nothing else needs preserving. Provider-panel execution is pending;
+retain the VPS subscription. See the [evidence and recovery boundary](log/2026-11-21-contabo-build-hold.md).
 
 1. Verify boot, build identity and expected public key on the already-flashed phone.
 2. Run the focused runtime checks and account for instrumentation signing requirements.

@@ -63,3 +63,12 @@ or its reviewed successor and follow [assistant integration](../assistant-integr
 Keep signing keys off the cloud host. Local patches, fixtures and their source-level verification
 remain available on Wakeel and in the pushed repository; Android build and device checks remain
 outstanding.
+
+## Owner approval update
+
+The owner subsequently answered: "Reinstall; nothing else needs preserving". This authorizes
+erasing the VPS disk for a clean Ubuntu reinstall while retaining the subscription. Reinstall
+is not yet executed: this session has SSH access but no configured Contabo control-plane tool
+or API credentials. The owner must initiate the provider's Reinstall action (Ubuntu 24.04 LTS,
+plain image, SSH public key) in the Contabo panel. Reset credentials alone does not reinstall
+the operating system. Resume remote setup only after that operation and host-identity checks.
