@@ -140,3 +140,13 @@ Pinned `tools/asuite/atest/java/Android.bp` declares `atest-tradefed` with requi
 instructions omit `-t`, allowing atest to build its runner dependencies before execution.
 No OS patch is required. The next resume starts with those host tests, then proceeds to image
 packaging only on success, followed by ordinary fixture builds.
+
+## Resume 4
+
+Recipe `ec01680`, unchanged fifteen-patch code, was transferred with matching local/remote
+archive SHA-256 `ed89fba84f6fb63d1bf02bf17f0e9c6d1efb4319660de27020b32685b58207a7`.
+Runner `/srv/ballistic/build-resume4-20261121.sh` skips successful vendor and explicit module
+compilation, retains source tree checks, and invokes `atest --host --disable-upload-result`
+with the same three focused Settings classes. Unit `ballistic-build-2026112100-resume4.service`,
+invocation `4a7a1da9138e43449dc135f5a9a3679c`; log/exit files
+`/srv/ballistic/logs/build-2026112100-resume4.{log,exit}`. Test success is still pending.

@@ -3,10 +3,12 @@
 Experimental recipe for GrapheneOS `2026110200`, extended 21 November 2026. The production path
 is a normal, independently signed `/data/app` APK. No platform signature, preinstallation,
 privapp allowlist, root, `pm grant`, shell identity, or `testOnly` flag is involved.
-The source and fixture Java contract are checked. The first full-tree build reached Soong
-analysis and found a packaging error; the correction and resumed build are recorded in the
-[cloud build log](log/2026-11-21-cloud-build-fixes.md). No successful full-tree compilation or
-device execution is claimed. See also the [source evidence](log/2026-11-21-installed-assistants.md).
+The source and fixture Java contract are checked. Cloud compilation now passed for the actual
+wrapper/public stubs, Settings, PermissionController, consent app and requested platform test
+modules after the recorded corrections. Host-test execution, ordinary fixture APK builds, image
+packaging and device behavior remain unverified. See the
+[cloud build log](log/2026-11-21-cloud-build-fixes.md) and
+[source evidence](log/2026-11-21-installed-assistants.md).
 
 ## Owner flow
 

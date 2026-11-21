@@ -58,8 +58,10 @@ the real app's Screen/Hands/model/policy adapters and AppFunctions remain out of
 Source and build contract: [assistant integration](assistant-integration.md). The first full-tree build found a
 partition-dependency error during vendor helper preparation. Two appended packaging patches
 corrected it. The resumed build completed vendor preparation and reached Settings compilation;
-a third correction explicitly types the new switch callbacks. Successful platform compilation
-and device execution remain pending. See the
+a third correction explicitly types the new switch callbacks. Compilation of the requested
+platform/library and test modules now passes. Host tests stopped before execution because their
+TradeFed launcher was missing; dependency building is enabled in the resumed command. Complete
+image packaging, ordinary fixture APK builds and device execution remain pending. See the
 [cloud build record](log/2026-11-21-cloud-build-fixes.md). A lightweight public-SDK javac contract check passed; clean
 application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).
 At this pin, EnhancedConfirmationService does not protect assistant role selection; no bypass
@@ -70,7 +72,8 @@ is added. Record installer-specific behavior on-device rather than assuming acce
 The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe commit `6b936cf`
 (patch contents from reviewed `d02b997`) built as `2026110700`. The pre-extension eight-patch series
 had the same final source apart from removed licence comments; it was not compiled itself.
-The current fifteen-patch series adds the installed-assistant extension and needs a new build.
+The current fifteen-patch series adds the installed-assistant extension. Its requested platform
+and test modules compiled on Contabo; complete image packaging and runtime tests remain pending.
 For that historical eleven-patch snapshot, compilation and signing passed. Focused Settings host
 tests passed 11 cases with 3 assumption skips; instrumentation package compilation did not mean
 its device tests ran.
