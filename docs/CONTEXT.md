@@ -84,11 +84,14 @@ These are historical records, not assertions that their tmux jobs or cloud hosts
 
 ## Next platform work
 
-**Cloud build hold, 21 November:** the Contabo source sync was stopped after finding a
-process-hiding library loaded into system processes and matching persistence files. Do not
-build or sign artifacts from that host's current installation. The owner approved a clean
-reinstall and confirmed nothing else needs preserving. Provider-panel execution is pending;
-retain the VPS subscription. See the [evidence and recovery boundary](log/2026-11-21-contabo-build-hold.md).
+**Cloud recovery, 21 November:** after finding process-hiding malware indicators, the owner
+approved erasing the VPS disk. Contabo accepted the clean Ubuntu reinstall through its API;
+the new SSH host identity and fresh baseline were verified. Dependencies and firewall setup
+passed, the updated kernel booted, and the fresh source/build pipeline was launched. This is
+not a completed build. Retain the VPS subscription.
+See the [recovery record](log/2026-11-21-contabo-reinstall.md) and
+[original evidence](log/2026-11-21-contabo-build-hold.md). Never reuse the discarded installation's
+source or output as trusted build inputs.
 
 1. Verify boot, build identity and expected public key on the already-flashed phone.
 2. Run the focused runtime checks and account for instrumentation signing requirements.

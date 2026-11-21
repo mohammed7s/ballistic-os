@@ -16,6 +16,9 @@ for decisions and status. No historical job or approval should be assumed active
 
 ## Experiments and handoff entries
 
+- [2026-11-21-contabo-reinstall.md](2026-11-21-contabo-reinstall.md): approved provider reinstall,
+  verified new host identity, clean baseline and build preparation
+
 - [2026-11-21-contabo-build-hold.md](2026-11-21-contabo-build-hold.md): cloud source sync stopped
   after process-hiding malware indicators; clean host recovery pending, VPS retained
 
