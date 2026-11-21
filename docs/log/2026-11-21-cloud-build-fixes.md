@@ -110,3 +110,14 @@ and retains the platform outputs. Actual Kotlin compilation and subsequent tests
 
 The fifteen-patch clean `git am` verification, idempotent reapplication and dirty-tree refusal
 passed via `scripts/verify-patches.py`; the reported Settings tree matches the correction above.
+
+## Resume 3
+
+Recipe `47c4d95` was transferred as an archive with matching local/remote SHA-256
+`667e7a84772b0ea562ddac6d0cd18b882e0626e411b2ad3403935c3a0f4eeb2c`.
+The prefix-aware application adds only Settings patch 0003. Runner
+`/srv/ballistic/build-resume3-20261121.sh` checks the updated tree and skips vendor preparation.
+Unit `ballistic-build-2026112100-resume3.service`, invocation
+`79dfbe46323145f4b46b9f84d27a18c9`; log/exit files
+`/srv/ballistic/logs/build-2026112100-resume3.{log,exit}`. Launch does not establish compilation
+or test success. Existing platform outputs are reused without cleaning or resyncing.
