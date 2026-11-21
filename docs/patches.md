@@ -1,6 +1,6 @@
 # Reviewer guide: owner-controlled Computer Control
 
-Target: GrapheneOS tag `2026110200` (Android 17). Eight patches in three repositories. Apply
+Target: GrapheneOS tag `2026110200` (Android 17). Twelve patches in four repositories. Apply
 order and commands: [patch index](../patches/README.md). Common questions: [FAQ](faq.md).
 Review history of the earlier eleven-patch series:
 [dated record](log/2026-11-07-patch-design-and-review-history.md).
@@ -22,9 +22,8 @@ On GrapheneOS the feature is unreachable for two reasons:
 
 The patches follow four rules:
 
-- **Add, never replace.** The DeviceConfig lookup stays. A second, owner-edited source is ORed
-  into the same allowlist step. Devices that use DeviceConfig behave as before, and upstream
-  changes to that code rebase more easily.
+- **Retain privileged compatibility.** DeviceConfig remains for privileged clients. Ordinary
+  role holders require both owner gates even when vendor entries match (0006).
 - **Empty by default.** Both owner lists start empty. With no entries, the feature is off.
 - **Every existing check stays, in the same order** (§2).
 - **No GrapheneOS-specific machinery.** No GosPackageState flags, no `strings_ext.xml` edits, no
@@ -37,19 +36,19 @@ A session request from agent A to automate target T passes every step, in this o
 marked `[new]` are where the patches add a source or a check. Nothing is removed.
 
 ```
-build time   A is preinstalled with ACCESS_COMPUTER_CONTROL in a privapp-permissions allowlist
-             (build_release 0001 makes the permission exist; the image builder decides who has it)
+permission   A declares ACCESS_COMPUTER_CONTROL and the owner selects A as default assistant
+             PermissionController grants the role permission; privileged clients remain supported
                                          |
 session      service checks the parcelled parameters itself              [new] fb 0004
 creation     version 5 only, so a foreground window is required          [new] fb 0003
              caller uid owns A; A holds ACCESS_COMPUTER_CONTROL and POST_NOTIFICATIONS
              A holds the assistant role (default digital assistant)
-             A allowed:  DeviceConfig list  OR  owner list "Allow screen automation"   [new] fb 0001
+             A allowed:  owner switch (ordinary); owner OR DeviceConfig (privileged)  [new] fb 0006
                                          |
-per target   T is not Settings or the consent app                         [new] fb 0003
+per target   T is not Settings, the consent app or PermissionController                         [new] fb 0003
              T is not itself an allowed agent
              T is not on the DeviceConfig denylist
-             T allowed:  DeviceConfig list  OR  owner list "Allow screen automation of this app"
+             T allowed:  owner switch (ordinary); owner OR DeviceConfig (privileged)
                                          |
              AppOp COMPUTER_CONTROL for A: ignored or errored -> deny
              saved consent for (A, T)?  no -> AOSP consent dialog (build_release 0002)
@@ -67,17 +66,17 @@ entries for that user. Deleting a user drops that user's records from both store
 
 ## 3. What the user sees
 
-1. Settings > Apps > Special app access > Screen automation lists the preinstalled apps that
-   hold the permission, each "Not allowed". Every launchable app's App info page has a Screen
-   automation entry reading "Not allowed". Settings and the consent app have none.
-2. The owner opens the assistant's page and turns on "Allow screen automation". If the app is
-   not the default digital assistant, its target list stays disabled, as in AOSP.
-3. The owner opens App info > Screen automation for a target, such as a notes app, and turns on
-   "Allow screen automation of this app".
-4. The first time the assistant asks to automate that app, the AOSP consent dialog appears. The
-   owner chooses Allow once or Always allow. Approved targets then appear on the assistant's
-   page and can be removed one by one.
-5. Turning either switch off ends running sessions at once.
+1. Install an eligible assistant and select it in system Default apps > Digital assistant app.
+2. Open Apps > Special app access > Screen automation: **one centralized page** shows the chosen
+   assistant's automation switch, then a searchable list of eligible installed targets with inline
+   individual switches. All fresh grants start off; no app is preselected or branded by this recipe.
+3. Enable the assistant and desired targets there. App-info links open the same centralized page.
+4. Separately approve the AOSP per-target consent dialog when the assistant requests a session.
+5. Turn off either owner gate to end affected sessions. Turning off a target clears saved approvals.
+
+Settings 0002 supersedes the original per-agent/per-target page design described under Settings
+0001 below; that patch remains intact for review/history. The assistant's own app contains no owner
+permission editor. The [integration contract](assistant-integration.md) gives the complete flow.
 
 There is no master switch. AOSP has none, and empty per-app lists already mean off.
 
@@ -258,13 +257,49 @@ permissions, managed-device policy and the Computer Control AppOp.
 
 **Security argument.** "Allow once" cannot override an explicit AppOp denial. A normal agent
 that loses its permission is not reclassified as a test agent. These checks read several
-services and are not one transaction. They run at both points, and existing runtime watchers
-still apply after publication.
+services and are not one transaction. They run at both points. The existing AppOp watcher
+continues after publication; 0006 adds the missing role/permission/policy lifecycle handling.
 
 **Files.** `ComputerControlSessionProcessor.java`, `ComputerControlAllowlistController.java` and
 their tests.
 
 **Rebase risk.** Moderate.
+
+### 0006 `computercontrol: authorize installed assistants and revoke live access`
+
+Adds `role` while preserving `internal|privileged`. PermissionController's accompanying patch
+uses requested-permission filtering and the existing exclusive assistant role; the role remains
+non-requestable and owner-selected through Default apps. Adding the OS fingerprint to role-state
+hashing makes system updates regrant qualifying existing holders even when APK paths stay fixed.
+
+Ordinary (non-privileged) clients must have both signer-bound owner entries. DeviceConfig cannot
+replace either entry for them; privileged clients keep the old alternative. PermissionController
+is now protected before special-agent/test-only paths, alongside Settings and the consent app.
+
+Role, permission, package and device-policy listeners invalidate pending work and close affected
+active sessions. Role changes close sessions for that user even if a privileged client retains
+its permission. A separate revocation generation spans consent waiting, so a revoke/regrant cannot
+revive a pending dialog; ordinary consent additions do not invalidate themselves. AppOp watching
+covers pending work and active ignored/errored/reset modes. Existing final checks and construction
+lock ordering remain: cross-service queries and session closures run outside the registry lock.
+
+A fifth signature-protected consent-manager query reports target eligibility without requiring an
+owner entry. It shares launcher/protected/agent/denylist checks and device policy with enforcement,
+so Settings can show eligible off-by-default candidates without granting them authority.
+
+Tests cover ordinary owner gates despite DeviceConfig, privileged compatibility, protected special
+paths, candidate queries, pending revoke/regrant, active permission and role withdrawal, AppOp
+error/reset, cross-user scoping and construction invalidation. Android test execution is pending.
+Callbacks are asynchronous; source review does not prove their runtime latency or races.
+
+### 0007 `computercontrol: install the shared wrapper and publish compile-only stubs`
+
+The existing consent app requires the existing `com.android.extensions.computercontrol` module,
+which installs its jar and registration XML in system_ext. A public-SDK Java module compiles the
+existing droidstubs source jar for compile-only app use. Pinned ART trusts system_ext framework
+code; no app-domain or global hidden-API exemption is added. Ordinary clients declare uses-library
+and must not bundle the implementation. The public API/fixture Java contract has a lightweight
+javac check; actual Soong/metalava/APK compilation and device loading are still pending.
 
 ## 6. packages/apps/Settings
 
@@ -295,10 +330,32 @@ for per-target consent. They only needed a switch above them.
 
 **Rebase risk.** Moderate. SPA page providers change between releases.
 
+### 0002 `Screen automation: centralize assistant and searchable target switches`
+
+Routes the main and old detail pages to a single owner page. It displays the selected assistant
+and automation switch, refreshes on focus/role/package changes, and loads searchable installed
+target candidates with inline toggles. Labels and package names are searchable; protected editors,
+assistant candidates, non-launchable/disabled and server-ineligible apps are excluded. Missing
+assistant permissions disable enabling, while withdrawal remains possible. No package/signing
+identity is selected by the implementation. Three focused host cases cover search and local
+candidate exclusion; full UI tests and host execution are pending.
+
+### packages/modules/Permission 0001
+
+Adds the optional role-protected permission to ASSISTANT. `minSdkVersion=10000` with
+`optionalMinSdkVersion=37` means released products only offer it when the permission exists and
+has a grantable protection flag. The standard requested-permission intersection prevents a grant
+to an APK without the declaration. The configuration test verifies the optional entry and
+`internal|privileged|role` protection (feature-off products are explicitly skipped).
+
+The role module and framework delta must ship together; upstream module replacement without
+this patch is unsupported. PermissionController's existing revocation removes role-derived grants,
+while static privileged grants may remain: the server's role gate and listener cover that case.
+
 ## 7. Not in this series
 
-- **User-installed assistants.** The permission stays privileged. See the
-  [FAQ](faq.md#can-a-user-installed-assistant-use-this).
+- **Production assistant integration.** The ordinary test fixtures establish a reviewable contract;
+  the real assistant's Screen/Hands/model/policy work is separate.
 - **AppFunctions.** A separate service with a separate allowlist mechanism, which fails open
   when no provider is configured (§8.5). A caller gate is designed but not written.
 - **Session limits.** One concurrent session and six targets per session stay hardcoded.
@@ -307,7 +364,8 @@ for per-target consent. They only needed a switch above them.
 
 ## 8. Verified facts
 
-Checked in source at GrapheneOS tag `2026110200`. Line numbers are at the tag, before the
+Baseline facts checked in source at GrapheneOS tag `2026110200`. New extension traces and hashes
+are in the [21 November record](log/2026-11-21-installed-assistants.md). Line numbers below are at the tag, before the
 patches. Paths are in frameworks/base unless stated.
 
 ### 8.1 Flags and release config

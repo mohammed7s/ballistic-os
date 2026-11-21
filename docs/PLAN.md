@@ -13,17 +13,22 @@ Deliverable: a reproducible build and validated installation/update path.
 
 ## 2. Validate the Computer Control gate
 
-The patch set is implemented (eight patches since the 8 November re-cut). Complete device tests for empty defaults, per-user/signer
+The patch set is implemented (twelve patches after the 21 November installed-assistant extension).
+Complete device tests for empty defaults, per-user/signer
 binding, target exclusions, consent, version requirements, revocation and concurrent construction.
 Existing source evidence answers the sepolicy question; runtime checks still matter.
 Deliverable: repeatable device results, including denied and revoked access, not compilation alone.
 
 ## 3. Integrate the assistant
 
-Provide the privileged package/permission configuration required by the client and retain all
-role and consent requirements. Coordinate with the app repo's Computer Control adapter.
-Deliverable: an app-owned task through the platform session on the physical phone, with approval,
-Stop and revocation tested. Agent logic and model hosting remain outside this repo.
+Build and run the ordinary assistant and controlled-target fixtures using the
+[integration contract](assistant-integration.md). The role permission, shared wrapper and centralized
+Settings page are implemented; full-tree compilation and runtime validation of the extension remain.
+Verify default-off gates, consent, observation/input, notification/foreground requirements, Stop,
+live/pending revocation, upgrade/reinstall and cross-user cases. Then coordinate the real app's
+Computer Control adapter in its own repository. No production privileged packaging is required.
+Deliverable: an independently signed `/data/app` assistant operating an approved controlled target
+through owner UI alone, with evidence. Agent logic and model hosting remain outside this repo.
 
 ## 4. Maintain the patch series and updates
 
@@ -36,7 +41,7 @@ Deliverable: traceable updates with test evidence and a recovery procedure.
 ## 5. Upstream proposal
 
 Ask about an owner-managed Computer Control allowlist, how a user-installed assistant could be
-given access without weakening security (the open problem in faq.md),
+given access with deliberate owner authorization (the experimental extension in faq.md),
 and expected integration with future third-party assistant APIs. Bring reviewed patches and
 runtime evidence. Ask early; do not assume acceptance. Submit the Computer Control gate as a
 small independent proposal, with no assistant or model bundled into the ask.

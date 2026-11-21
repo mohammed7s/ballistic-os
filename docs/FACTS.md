@@ -1,5 +1,9 @@
 # OS source research
 
+The installed-assistant extension researched and implemented on 21 November 2026 is documented
+in the [integration contract](assistant-integration.md) and [dated evidence](log/2026-11-21-installed-assistants.md).
+The source notes below preserve the earlier baseline; they do not describe the added role grant.
+
 Preserved from Ballistic CONTEXT §4c, checked against the pinned source tag on 7 November 2026. Build-status statements below describe the research session, not the latest validation. See [current context](CONTEXT.md) and [validation](regression-tests.md). Original § references refer to the [historical handoff](https://github.com/mohammed7s/ballistic/blob/master/docs/log/2026-11-07-before-reorganization-context.md).
 
 ## Computer Control gate

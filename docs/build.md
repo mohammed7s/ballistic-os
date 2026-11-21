@@ -23,7 +23,12 @@ DEVICE=blazer BUILD_NUMBER=<chosen-number> scripts/build.sh /path/to/grapheneos-
 ```
 
 Replace the path and build number. `sync.sh` verifies the pinned manifest tag and applies the
-series with `git am`; inspect and resolve conflicts rather than skipping a failed patch.
+series with `git am`. The application helper audits all four patched projects against
+[source-pins.json](../source-pins.json), accepting only the pin or an exact patch-ID prefix.
+It refuses dirty trees, foreign commits and mismatched bases before applying anything; it does
+not rebase or reset local work. Preserve and resolve divergent work separately. For an already
+synced pinned tree, run `python3 scripts/apply-patches.py /path/to/grapheneos-source` from this
+recipe without repeating a sync. Inspect conflicts rather than skipping a failed patch.
 `build.sh` generates vendor files, builds target-files and otatools, then finalizes artifacts
 under the source tree's `releases/<chosen-number>/`. It refuses root execution.
 `SKIP_VENDOR=1` reuses existing vendor files and `CLEAN=1` deletes build output; use only when
@@ -31,6 +36,15 @@ appropriate to that checkout. `OFFICIAL_BUILD` is deliberately unset, so Updater
 
 Record the recipe commit, manifest tag, applied source revisions, build number, tool versions,
 actual build exit status and artifact hashes. A monitor exiting successfully is not build proof.
+
+## Extension compile and regression targets
+
+The twelve-patch extension requires a fresh full-tree build; historical build success applies
+to the earlier source only. Before signing, build the wrapper/stubs, PermissionController, Settings,
+VirtualDeviceManager, ordinary fixture APKs and instrumentation packages using the exact commands
+in [assistant integration](assistant-integration.md#fixtures-and-build-host-commands). Run the
+[focused host and device matrix](regression-tests.md). Do not install the fixtures into the product
+or treat instrumentation-package compilation as execution. Record actual output paths and hashes.
 
 ## Sign — separate signing machine
 

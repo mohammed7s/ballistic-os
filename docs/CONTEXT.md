@@ -1,6 +1,6 @@
 # OS context and current decisions
 
-Updated 8 November 2026. This is the handoff for the platform repository. App decisions and
+Updated 21 November 2026. This is the handoff for the platform repository. App decisions and
 agent development belong in [Ballistic](https://github.com/mohammed7s/ballistic).
 
 ## Scope
@@ -34,13 +34,42 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 - **8 Nov 2026: this repository stays generic.** The README and reviewer docs describe an
   owner-controlled gate for any assistant. Ballistic is named once, as the origin.
 
+## Installed-assistant extension, 21 November 2026
+
+The authorized extension is implemented as four appended patches (twelve total, four repositories).
+`ACCESS_COMPUTER_CONTROL` is now `internal|privileged|role`; PermissionController grants it only
+to a qualifying selected assistant requesting it. Ordinary clients require both signer-bound owner
+gates even if vendor allowlists match. Existing privileged grants and their vendor path remain.
+Role selection never enables owner gates or target consent. No assistant is bundled/preselected.
+
+Settings uses **one centralized Screen automation page**: selected assistant and its switch, a
+searchable list of eligible installed targets with inline toggles, all fresh grants off. App-info
+routes go there too. Per-target system consent remains separate. This supersedes the old separate
+agent/target-page design. A signature-only candidate query excludes ineligible targets without
+requiring their switches to be on.
+
+Live role/permission/AppOp/policy/package changes are handled, pending consent is invalidated by
+withdrawal, and PermissionController joins Settings/consent in the early protected-target guard.
+Role reconciliation includes the OS fingerprint so existing holders receive updated role grants.
+The installed system_ext wrapper and generated public compile stubs support ordinary clients
+without global hidden-API exemptions. The minimal assistant/target fixtures exercise the contract;
+the real app's Screen/Hands/model/policy adapters and AppFunctions remain out of scope.
+
+Source and build contract: [assistant integration](assistant-integration.md). New patches have not
+had a full-tree build or device run. A lightweight public-SDK javac contract check passed; clean
+application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).
+At this pin, EnhancedConfirmationService does not protect assistant role selection; no bypass
+is added. Record installer-specific behavior on-device rather than assuming accessibility rules.
+
 ## Recorded validation
 
 The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe commit `6b936cf`
-(patch contents from reviewed `d02b997`) built as `2026110700`. The current eight-patch series
-has the same final source apart from removed licence comments; it has not been compiled itself.
-Compilation and signing passed. Focused Settings host tests passed 11 cases with 3 assumption
-skips; instrumentation package compilation did not mean its device tests ran.
+(patch contents from reviewed `d02b997`) built as `2026110700`. The pre-extension eight-patch series
+had the same final source apart from removed licence comments; it was not compiled itself.
+The current twelve-patch series adds the installed-assistant extension and needs a new build.
+For that historical eleven-patch snapshot, compilation and signing passed. Focused Settings host
+tests passed 11 cases with 3 assumption skips; instrumentation package compilation did not mean
+its device tests ran.
 
 The patched factory image was downloaded and verified, then flashed and relocked on the test
 Pixel 10 Pro (`blazer`). The final flash record still leaves modified-build boot, displayed key,
@@ -57,7 +86,7 @@ These are historical records, not assertions that their tmux jobs or cloud hosts
 
 1. Verify boot, build identity and expected public key on the already-flashed phone.
 2. Run the focused runtime checks and account for instrumentation signing requirements.
-3. Integrate an appropriately packaged assistant and validate the actual Computer Control client.
+3. Build the new role/library/Settings changes and ordinary fixtures, then validate the real client.
 4. Prove matching-key recovery OTA behavior before designing automatic publishing.
 5. Prepare an upstream discussion with clear threat model, patch scope and device evidence.
 
@@ -67,12 +96,9 @@ its [platform contract](https://github.com/mohammed7s/ballistic/blob/master/docs
 ## Open questions
 
 - Will GrapheneOS accept an owner-managed Computer Control gate?
-- **Open problem, 8 Nov 2026:** let the owner give access to a user-installed assistant without
-  making the device less secure. With the permission privileged, merging the patches helps only
-  assistants shipped in the image. The aim is owner control on the USB-debugging precedent:
-  powerful, off by default, granted only through deliberate owner steps. Requirements and a
-  role-based candidate are in [faq.md](faq.md#can-a-user-installed-assistant-use-this); no
-  patch yet, maintainers' view wanted first.
+- The installed-assistant extension is now implemented experimentally; acceptance and runtime
+  safety remain unverified. The earlier preference to discuss before implementation was superseded
+  by the 21 November implementation authorization.
 - Scope: this repository covers OS permissions only. How assistants behave in apps belongs to
   the assistant. Whether apps accept automation is for app and assistant developers to settle.
   The OS takes no side: the FAQ records what apps can see, with precedents, and the patches
@@ -80,7 +106,7 @@ its [platform contract](https://github.com/mohammed7s/ballistic/blob/master/docs
 - Is the consent app already in GrapheneOS? The source at the tag says no; a 1 October 2026
   forum post reports it present after release 2026092500. Check on an unmodified device.
 - Do all pending-construction/revocation and cross-user cases hold on-device?
-- How should the assistant be packaged and permission-allowlisted for this development image?
+- Do the independently signed fixtures satisfy the complete Settings/role/consent flow on-device?
 - What separate AppFunctions access delta is justified?
 - What image distribution, signing and update policy is appropriate if development becomes public?
 

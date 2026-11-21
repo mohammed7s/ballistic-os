@@ -16,5 +16,9 @@ for decisions and status. No historical job or approval should be assumed active
 
 ## Experiments and handoff entries
 
+- [2026-11-21-installed-assistants.md](2026-11-21-installed-assistants.md): installed-assistant
+  role/lifecycle extension, centralized Settings page, ordinary fixtures and lightweight checks;
+  full-tree compilation and device validation pending
+
 - [2026-11-08-patch-series-recut.md](2026-11-08-patch-series-recut.md): eleven patches re-cut
   to eight, with the mapping and verification

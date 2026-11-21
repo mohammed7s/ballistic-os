@@ -1,95 +1,74 @@
 # ballistic-os
 
-**Patches for GrapheneOS that let the device owner choose which assistant may use Android 17's
-Computer Control, and on which apps.**
+**Patches for GrapheneOS that let the device owner choose an installed assistant for Android 17
+Computer Control, and the apps it may operate.**
 
-Android 17 includes Computer Control: an assistant app operates other apps on a hidden virtual
-display, with the user's consent for each app. On GrapheneOS it is compiled off. The apps
-allowed to use it also come from Google's remote configuration (DeviceConfig), which GrapheneOS
-never receives. These patches switch the feature on and give that decision to the owner, in
-Settings.
+Computer Control runs target apps on a separate virtual display, with per-target system consent.
+At the pinned GrapheneOS release it is compiled off and its vendor allowlists are unavailable.
+This experimental recipe enables it and adds deliberate owner controls in Android Settings.
+It contains a pinned source recipe, format-patches, build scripts and small integration fixtures;
+no production assistant, model or app policy engine.
 
-This repository holds a pinned GrapheneOS tag, the patches as `git format-patch` files and the
-build scripts. It contains no Android source and no assistant.
+## Owner experience
 
-## If you never open the setting, nothing changes
+Install an eligible assistant normally and choose it as the default digital assistant in Settings.
+Open **Apps > Special app access > Screen automation**: one centralized page shows the chosen
+assistant's automation switch and a **searchable installed-app list with individual inline target
+switches**. Fresh grants all start off. No assistant is branded or preselected by these patches.
+After enabling both switches, separately approve the system's per-target consent request.
 
-Both new lists start empty. No app can open a session until the owner allows an assistant and
-at least one target app. Today only a preinstalled app can hold the permission, so on a stock
-image there may be no app to allow at all.
+The assistant is an independently signed `/data/app` APK. It needs no preinstallation, platform
+signature, root or ADB permission grant. Choosing its role grants the requested Computer Control
+permission; that alone does not authorize a session. The [integration contract](docs/assistant-integration.md)
+explains eligibility, notifications, library loading, version 5, revocation and the test fixtures.
 
-## The patches
+## Security boundaries
 
-Eight patches in three repositories, against GrapheneOS tag `2026110200`.
+- Ordinary assistants require both owner switches, even when vendor allowlists contain matches.
+- Assistant role, permission, AppOp, signer/user binding, foreground visibility, notification,
+  device policy and per-target consent checks remain enforced.
+- Withdrawal invalidates pending requests and closes affected active sessions. Settings, the
+  consent app and PermissionController cannot be automation targets, including special paths.
+- Preinstalled privileged clients retain their existing vendor path, with role and other checks.
+- No SELinux, verified-boot, keystore, attestation or global hidden-API exemption is added.
 
-| Group | Repository | Patch | What it does |
-|---|---|---|---|
-| Turn it on | build/release | 0001 | Enable Computer Control, per-app consent and version 5 |
-| | build/release | 0002 | Build the AOSP consent dialog app |
-| Owner control | frameworks/base | 0001 | Check an owner-edited list next to the DeviceConfig list |
-| | frameworks/base | 0002 | System API so Settings can edit that list |
-| | packages/apps/Settings | 0001 | Switches to allow an assistant and to allow each target app |
-| Hardening | frameworks/base | 0003 | Settings can never be automated; withdrawal wins over a session being created |
-| | frameworks/base | 0004 | Validate session parameters inside the service |
-| | frameworks/base | 0005 | Recheck permissions and policy before a session starts |
+An authorized assistant has substantial power inside approved apps. These OS gates do not decide
+whether an individual action, such as sending or paying, is appropriate. That belongs to the
+assistant's policy; apps remain free to recognize or reject automation.
 
-Each patch is explained in the [reviewer guide](docs/patches.md). Apply order and commands are
-in the [patch index](patches/README.md).
+## Patches and status
 
-## What stays the same
+**21 November 2026:** twelve patches in four repositories, against GrapheneOS tag `2026110200`.
+The original eight remain intact. The extension adds a role permission grant, lifecycle handling,
+shared-library packaging/public compile stubs and the centralized Settings page. It applies by
+default through `scripts/sync.sh`; there is no silently selected optional variant or newer base.
 
-- The permission stays privileged, so only preinstalled, allowlisted apps can request it.
-- The assistant must hold the assistant role, which the user chooses.
-- The AOSP consent dialog still asks per target app.
-- The DeviceConfig path is kept and still works where it exists.
-- Apps can still tell a session's input from the owner's. The patches take no side on whether
-  apps accept automation; see the [FAQ](docs/faq.md#can-apps-tell-they-are-being-automated).
-- No change to SELinux policy, verified boot, keystore, attestation or GrapheneOS hardening.
-
-## Open problem: assistants the user installs
-
-Because the permission stays privileged, only an assistant built into the image can use it.
-Merging these patches alone would not let a user install an assistant of their choice and allow
-it.
-
-The aim is for the owner to be able to choose any assistant, including one they install
-themselves, without making the device less secure. Android already has a precedent: USB
-debugging. It grants powers as broad as this one, including input into any app, screen capture
-and permission grants, behind deliberate steps that only the owner can take. Computer Control
-could follow the same principle: powerful, off by default, and fully in the owner's hands.
-
-We have not solved this, and these patches do not attempt it. The requirements and one candidate
-approach are in the [FAQ](docs/faq.md#can-a-user-installed-assistant-use-this). We would like
-the maintainers' view before writing a patch.
-
-## Status
-
-8 November 2026. An image with this change set compiled, was signed with disposable test keys,
-and was flashed and relocked on a test Pixel 10 Pro. That build used the series before it was
-re-cut into eight patches; the source differs only by removed licence comments. Focused Settings
-host tests passed 11 cases with 3 skipped. Boot identity and on-device Computer Control behaviour are not yet verified.
-This is not a release. Evidence is in the [validation record](docs/regression-tests.md).
+Clean patch application and a lightweight javac check of the pinned public extension signature
+and fixture Java are recorded in the [new evidence](docs/log/2026-11-21-installed-assistants.md).
+The extension's full OS/Soong build, Settings and instrumentation tests, APK packaging and device
+flow are **not run**. Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
+belong to the pre-extension series; they do not validate this change. This is not a release or a
+claim of GrapheneOS endorsement. See [validation](docs/regression-tests.md).
 
 ## Build
 
-Read the [build procedure](docs/build.md) first. Signing happens on a separate machine, as
-described in [keys](docs/keys.md).
+Read the [build procedure](docs/build.md) and [patch index](patches/README.md) first. Use an adequately
+provisioned build host; signing remains on a separate machine under the [key procedure](docs/keys.md).
 
 ```bash
-scripts/sync.sh     # GrapheneOS at the tag in MANIFEST, with patches/ applied
-scripts/build.sh
+scripts/sync.sh /path/to/grapheneos-source
+scripts/build.sh /path/to/grapheneos-source
 ```
 
-Then follow the [installation procedure](docs/flashing.md).
-
-## More
+The application step verifies [pinned project revisions](source-pins.json), preserves unrelated
+work, and accepts only an exact prefix of this recipe. It does not silently rebase. Installation
+requires the separate [device procedure](docs/flashing.md) and current authorization.
 
 [Reviewer guide](docs/patches.md) · [FAQ](docs/faq.md) · [Roadmap](docs/PLAN.md) ·
-[Current context](docs/CONTEXT.md) · [Source research](docs/FACTS.md) ·
-[Dated records](docs/log/README.md)
+[Current context](docs/CONTEXT.md) · [Source research](docs/FACTS.md) · [Dated records](docs/log/README.md)
 
-This work started alongside [Ballistic](https://github.com/mohammed7s/ballistic), an assistant
-app. The patches name no app and work with any assistant that passes the checks above.
+This work started alongside [Ballistic](https://github.com/mohammed7s/ballistic). Its real app
+adapters, models and policy remain separate. AppFunctions access is not enabled by this recipe.
 
 Apache-2.0. Maintainer: [@mohammed7s](https://github.com/mohammed7s).
 Not affiliated with or endorsed by GrapheneOS.

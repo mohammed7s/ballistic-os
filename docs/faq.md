@@ -19,14 +19,13 @@ Settings.
 ## What does this add for someone who never turns it on?
 
 - The Computer Control permissions become defined, and the consent dialog app is installed.
-- Settings shows Screen automation pages, with every entry "Not allowed".
+- Settings shows one Screen automation page, with fresh assistant and target grants off.
 - `system_server` reads one small, empty owner-list file at boot.
-- Four new hidden binder methods exist, callable only with a signature permission.
+- Five new hidden binder methods exist (owner/target grants and target eligibility), callable only with a signature permission.
 
-No app can open a session. A session also needs an app that holds the privileged permission. A
-GitHub code search of the GrapheneOS organisation found no app manifest or privileged-permission
-allowlist requesting it. Search coverage of large repositories is incomplete, so confirm on a
-device with `dumpsys package | grep ACCESS_COMPUTER_CONTROL`.
+On the normal installed-assistant path, neither role selection nor the permission alone can open
+a session: both owner switches and target consent are required. Existing privileged vendor-list
+paths remain compatible. Fresh owner lists start empty; this recipe selects no assistant.
 
 ## What can an allowed assistant do?
 
@@ -57,58 +56,33 @@ The patches do not change accessibility services.
 
 ## Can a user-installed assistant use this?
 
-Not yet. This is an open problem, and these patches do not attempt to solve it.
+The 21 November extension implements this experimentally. A normal independently signed APK can
+request `ACCESS_COMPUTER_CONTROL`, qualify as an assistant and receive the permission when the
+owner selects it through system Default apps settings. The permission is `internal|privileged|role`;
+the original privileged path remains. An ordinary app cannot grant itself the role permission.
 
-**Where things stand.** `ACCESS_COMPUTER_CONTROL` is `internal|privileged` in AOSP, and the
-patches keep that. Only an app built into the image and listed in a privileged-permission
-allowlist can hold it. Merging the patches would therefore help only assistants that GrapheneOS,
-or someone building their own image, chooses to ship.
+The owner then uses one centralized **Screen automation** Settings page: the selected assistant
+and its switch, plus a searchable eligible target list with inline switches. Fresh grants all start
+off, and system per-target consent remains separate. Ordinary assistants require both owner gates
+even if DeviceConfig also lists them. No preinstall, platform signature, root, `pm grant` or
+production test bypass is required by this design.
 
-**The aim.** The owner should be able to choose any assistant, including one they installed
-themselves, without the device becoming less secure than it is today.
+The installed shared wrapper, public compile-only stubs, minimal ordinary fixtures and exact flow
+are in the [integration contract](assistant-integration.md). Clean patch application and a public-SDK
+Java signature/fixture contract check passed. Full-tree compilation, APK packaging and device
+execution of this extension are not run, so normal installation and session success are not yet
+runtime-proven.
 
-**The precedent.** USB debugging already gives the owner powers at least this broad. Through
-it, a connected computer can inject input into any app, capture the screen and grant
-permissions. Android ships that safely by putting it behind steps only the owner can take:
-unhide developer options, turn on USB debugging, then approve the computer's key on the phone.
-It is off by default and the owner can revoke it at any time. AOSP's own Computer Control check
-also already accepts a test-only agent that holds the permission through the debugging shell.
-The code therefore already allows a non-privileged agent, as long as the owner set it up.
-
-**What a solution must keep.**
-
-- Only the owner can grant access, through deliberate steps in Settings. No app can grant it to
-  itself, and automation cannot reach those steps.
-- Off by default and revocable at any time. Revoking closes running sessions.
-- Visible while in use.
-- The owner switches and the per-target consent dialog still apply.
-- Nothing changes for owners who never use it.
-- An owner talked into it by a malicious app is at least as well protected as with an
-  accessibility service today.
-
-**One candidate approach.** Android can grant a permission to whichever app holds a role. At
-the tag, the assistant role already grants four permissions declared `internal|role`,
-`signature|role` or `signature|module|role`, and the role is not limited to system apps. Adding
-`role` to the protection level of `ACCESS_COMPUTER_CONTROL`, and listing it under the assistant
-role in PermissionController, would give the access to whichever app the owner makes the default
-digital assistant. Choosing another assistant would remove it. The service reads the grant
-through a normal permission check, so its other checks would not need to change.
-
-Open questions about that approach:
-
-- Is choosing a default assistant a deliberate enough step for this power? It may need an extra
-  confirmation, in the way developer options must be unlocked before USB debugging appears.
-- Should Android's restricted-settings protection, which already makes sideloaded apps wait for
-  extra owner approval before they can become accessibility services, apply here too?
-- Does PermissionController, a separately updated module, need the same change in every build?
-
-Nothing here is written or tested. We would like the maintainers' view first.
+At this pin, assistant-role selection is not in EnhancedConfirmationService's restricted-settings
+list. This extension does not bypass a restriction or add a global exemption. Installer-specific
+UI must still be checked on-device. A malicious assistant authorized by the owner has substantial
+power within approved targets; this is not a zero-risk claim or an upstream endorsement.
 
 ## Can an assistant use automation to give itself more access?
 
-No. Settings and the consent dialog app are rejected as targets before every other check, even
-if DeviceConfig lists them (frameworks/base 0003). Settings also hides their target pages
-(Settings 0001). Editing the lists needs a signature permission that only Settings and the
+No. Settings, the consent app and PermissionController are rejected before alternative allowlist,
+super-agent and test-session target paths (frameworks/base 0003 and 0006). The centralized Settings
+list excludes them too. Editing the lists needs a signature permission that only Settings and the
 consent app hold.
 
 ## What happens when access is withdrawn?
@@ -117,8 +91,12 @@ It takes effect immediately, including on live sessions:
 
 - Turning an assistant off closes its sessions.
 - Turning a target off closes every session on it and clears saved approvals for it.
-- Revoking the role, a permission or the AppOp, or changing device policy, stops a pending
-  request from becoming a session (frameworks/base 0003 and 0005).
+- Role/permission/policy/package listeners invalidate pending work and close affected live sessions.
+  Role changes also close privileged clients that retain a static permission. AppOp ignored, errored
+  and reset modes close sessions (0006). Existing final authorization checks remain.
+- Withdrawal invalidates outstanding consent, so reauthorization cannot revive an old pending
+  request. Active closures are user/UID/target-scoped; pending invalidation is conservative across
+  users. Callback latency and race behavior still require device testing.
 
 Uninstalling an app or deleting a user removes their records.
 
@@ -198,12 +176,13 @@ dropped without migration.
 
 | Check | Result |
 |---|---|
-| Patches apply to the tag | Passed |
-| Image compiles and signs | Passed, for the series before its 8 November re-cut, which differs only in comment headers |
-| Settings host tests | 11 passed, 3 skipped |
-| frameworks/base instrumentation tests | Compiled, not run |
-| Boot identity on the test phone | Not yet verified |
-| Any on-device Computer Control behaviour | Not yet tested |
+| Twelve patches apply cleanly to pinned source | Passed; exact-prefix rerun and dirty-tree refusal also passed |
+| Public extension signature and fixture Java compile against pinned public SDK | Passed (lightweight javac contract check) |
+| New extension full-tree build, stubs/APK packaging and new Android tests | Not run |
+| Historical pre-extension image compilation/signing | Passed for the series before the 8 November re-cut |
+| Historical pre-extension Settings host tests | 11 passed, 3 skipped |
+| Historical frameworks/base instrumentation tests | Compiled, not run |
+| Boot identity and on-device Computer Control behavior | Still unverified |
 
 The device checks still to run are listed in the reviewer guide, §9.
 
