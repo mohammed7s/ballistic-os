@@ -38,17 +38,17 @@ assistant's policy; apps remain free to recognize or reject automation.
 
 ## Patches and status
 
-**21 November 2026:** fourteen patches in five repositories, against GrapheneOS tag `2026110200`.
+**21 November 2026:** fifteen patches in five repositories, against GrapheneOS tag `2026110200`.
 The original eight remain intact. The extension adds a role permission grant, lifecycle handling,
 shared-library packaging/public compile stubs and the centralized Settings page. It applies by
 default through `scripts/sync.sh`; there is no silently selected optional variant or newer base.
 
 Clean patch application and a lightweight javac check of the pinned public extension signature
 and fixture Java are recorded in the [new evidence](docs/log/2026-11-21-installed-assistants.md).
-The first cloud build found a partition-dependency error during Soong analysis; the appended
-packaging fixes passed clean application and the build has resumed. See the
-[build record](docs/log/2026-11-21-cloud-build-fixes.md). Successful full OS/Soong compilation,
-Settings and instrumentation tests, APK packaging and device flow remain **unverified**. Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
+The cloud build passed vendor preparation and reached Settings compilation, where it found two
+callback type errors. Packaging and callback corrections are appended to the series. See the
+[build record](docs/log/2026-11-21-cloud-build-fixes.md). Successful completion of platform/test
+compilation, test execution, image packaging and device flow remain **unverified**. Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
 belong to the pre-extension series; they do not validate this change. This is not a release or a
 claim of GrapheneOS endorsement. See [validation](docs/regression-tests.md).
 

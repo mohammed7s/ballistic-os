@@ -1,8 +1,8 @@
 # Patch index
 
-Fourteen `git format-patch` files against GrapheneOS **`2026110200`**. The original eight patches
+Fifteen `git format-patch` files against GrapheneOS **`2026110200`**. The original eight patches
 are preserved; four additions implement the installed-assistant extension by default, followed
-by two packaging corrections found during the first cloud build. The original twelve patches
+by two packaging corrections and a Kotlin callback type correction found during the cloud build. The original twelve patches
 remain unchanged.
 Exact upstream commits are recorded in [source-pins.json](../source-pins.json).
 Design: [reviewer guide](../docs/patches.md). Validation: [21 November evidence](../docs/log/2026-11-21-installed-assistants.md).
@@ -14,7 +14,7 @@ Design: [reviewer guide](../docs/patches.md). Validation: [21 November evidence]
 | `frameworks_base/` | `frameworks/base` | **0006** installed-assistant role permission, mandatory ordinary owner gates, live revocation, pending-consent invalidation, protected PermissionController, candidate API and upgrade reconciliation |
 | `frameworks_base/` | `frameworks/base` | **0007** shared wrapper installation and compile-only public stubs; **0008** moves installation out of the consent app dependency |
 | `build_make/` | `build/make` | **0001** installs the wrapper from the system_ext product under the consent-app release flag |
-| `packages_apps_Settings/` | `packages/apps/Settings` | 0001 original owner UI; **0002** one centralized page with selected assistant and searchable inline target switches |
+| `packages_apps_Settings/` | `packages/apps/Settings` | 0001 original owner UI; **0002** one centralized page with selected assistant and searchable inline target switches; **0003** explicit switch callback return types |
 | `packages_modules_Permission/` | `packages/modules/Permission` | **0001** optional assistant role grant and configuration regression |
 
 Apply numbered order within each repository. All five repositories are required for the advertised

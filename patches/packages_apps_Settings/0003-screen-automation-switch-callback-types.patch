@@ -1,0 +1,37 @@
+From b871e6e485b0175290e3feb1426eba9946a33e80 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 21 Nov 2026 18:27:21 +0300
+Subject: [PATCH] Screen automation: type switch callbacks as Unit functions
+
+The trailing revision increment makes untyped callbacks infer an Int return value, which does not implement SwitchPreferenceModel. Declare the expected function type for both owner and target callbacks.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../settings/spa/app/specialaccess/ScreenAutomationPage.kt    | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/settings/spa/app/specialaccess/ScreenAutomationPage.kt b/src/com/android/settings/spa/app/specialaccess/ScreenAutomationPage.kt
+index a991946..446477d 100644
+--- a/src/com/android/settings/spa/app/specialaccess/ScreenAutomationPage.kt
++++ b/src/com/android/settings/spa/app/specialaccess/ScreenAutomationPage.kt
+@@ -170,7 +170,7 @@ internal fun ScreenAutomationPage(userId: Int = UserHandle.myUserId()) {
+                             stringResource(R.string.computer_control_automation_allow_agent)
+                         override val checked = { controller.isApprovedByUser }
+                         override val changeable = { eligible || controller.isApprovedByUser }
+-                        override val onCheckedChange = { allowed: Boolean ->
++                        override val onCheckedChange: (Boolean) -> Unit = { allowed ->
+                             if (
+                                 !allowed ||
+                                     (eligible &&
+@@ -217,7 +217,7 @@ internal fun ScreenAutomationPage(userId: Int = UserHandle.myUserId()) {
+                             override val title = entry.label
+                             override val summary = { entry.app.packageName }
+                             override val checked = { controller.isTargetableByUser }
+-                            override val onCheckedChange = { allowed: Boolean ->
++                            override val onCheckedChange: (Boolean) -> Unit = { allowed ->
+                                 controller.setTargetableByUser(allowed)
+                                 revision++
+                             }
+-- 
+2.53.0
+

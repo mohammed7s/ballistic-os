@@ -91,3 +91,22 @@ Resume 2 uses the same code recipe `673b53a`, fourteen patches and tree checks. 
 invocation `d7586131932a4e5181b78a17378ab447`. Log and exit record:
 `/srv/ballistic/logs/build-2026112100-resume2.{log,exit}`. Existing helper outputs are retained.
 Successful phone compilation, host tests, image packaging and device validation remain pending.
+
+## Settings callback return types
+
+Resume 2 passed vendor preparation with the repaired host sandbox and reached compilation of
+Settings and the requested platform/test modules. It stopped at `Settings-core` Kotlin compilation:
+`ScreenAutomationPage.kt:173` and `:220` declared `onCheckedChange` with inferred return types
+incompatible with `SwitchPreferenceModel`'s `(Boolean) -> Unit`. Both lambda bodies end with
+`revision++`, whose inferred result is an integer. The pipeline exited 1 at
+`2026-11-21T15:26:50Z`, with 28,548 tasks done, one failed and 1,261 remaining in that stage.
+These counts are not overall image-build progress or passing tests.
+
+Settings patch 0003 explicitly declares `(Boolean) -> Unit` for both callbacks, retaining their
+bodies. Source commit `b871e6e`; updated Settings tree
+`45ab9f0a7178f15f099eb8ab8aa674b66064116b`. The first fourteen patches remain unchanged; the
+series now has fifteen patches. The next resume skips already-successful vendor preparation
+and retains the platform outputs. Actual Kotlin compilation and subsequent tests remain pending.
+
+The fifteen-patch clean `git am` verification, idempotent reapplication and dirty-tree refusal
+passed via `scripts/verify-patches.py`; the reported Settings tree matches the correction above.

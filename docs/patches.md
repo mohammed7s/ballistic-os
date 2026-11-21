@@ -1,6 +1,6 @@
 # Reviewer guide: owner-controlled Computer Control
 
-Target: GrapheneOS tag `2026110200` (Android 17). Fourteen patches in five repositories. Apply
+Target: GrapheneOS tag `2026110200` (Android 17). Fifteen patches in five repositories. Apply
 order and commands: [patch index](../patches/README.md). Common questions: [FAQ](faq.md).
 Review history of the earlier eleven-patch series:
 [dated record](log/2026-11-07-patch-design-and-review-history.md).
@@ -461,3 +461,11 @@ This preserves partition boundaries and library loading behavior without relaxin
 image check or changing access control. Files touched: the consent app's `Android.bp` and
 `media_system_ext.mk`. Public stubs, authorization, consent, revocation, ART and SELinux stay
 unchanged. The preceding twelve patches remain byte-for-byte intact.
+
+## Settings callback compilation correction
+
+Settings patch 0003 changes the two `ScreenAutomationPage.kt` switch callbacks to explicitly
+declare `(Boolean) -> Unit`. Their final `revision++` expression otherwise infers an `Int`
+return type, incompatible with `SwitchPreferenceModel`. This fixes compilation without changing
+the switch actions, authorization checks or revision refresh behavior. The first fourteen patches
+are unchanged. Verification is recorded in the cloud build log.

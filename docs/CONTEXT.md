@@ -36,7 +36,7 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 
 ## Installed-assistant extension, 21 November 2026
 
-The authorized extension is implemented as four extension patches plus two build fixes (fourteen total, five repositories).
+The authorized extension is implemented as four extension patches plus three build fixes (fifteen total, five repositories).
 `ACCESS_COMPUTER_CONTROL` is now `internal|privileged|role`; PermissionController grants it only
 to a qualifying selected assistant requesting it. Ordinary clients require both signer-bound owner
 gates even if vendor allowlists match. Existing privileged grants and their vendor path remain.
@@ -57,7 +57,9 @@ the real app's Screen/Hands/model/policy adapters and AppFunctions remain out of
 
 Source and build contract: [assistant integration](assistant-integration.md). The first full-tree build found a
 partition-dependency error during vendor helper preparation. Two appended packaging patches
-correct it; successful compilation and device execution remain pending. See the
+corrected it. The resumed build completed vendor preparation and reached Settings compilation;
+a third correction explicitly types the new switch callbacks. Successful platform compilation
+and device execution remain pending. See the
 [cloud build record](log/2026-11-21-cloud-build-fixes.md). A lightweight public-SDK javac contract check passed; clean
 application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).
 At this pin, EnhancedConfirmationService does not protect assistant role selection; no bypass
@@ -68,7 +70,7 @@ is added. Record installer-specific behavior on-device rather than assuming acce
 The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe commit `6b936cf`
 (patch contents from reviewed `d02b997`) built as `2026110700`. The pre-extension eight-patch series
 had the same final source apart from removed licence comments; it was not compiled itself.
-The current fourteen-patch series adds the installed-assistant extension and needs a new build.
+The current fifteen-patch series adds the installed-assistant extension and needs a new build.
 For that historical eleven-patch snapshot, compilation and signing passed. Focused Settings host
 tests passed 11 cases with 3 assumption skips; instrumentation package compilation did not mean
 its device tests ran.
