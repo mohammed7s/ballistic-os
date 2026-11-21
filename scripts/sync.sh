@@ -42,15 +42,5 @@ start=$(date +%s)
 repo sync -c -j"$jobs" --no-tags --no-clone-bundle --retry-fetches=5 --optimized-fetch
 echo "sync: $tag in $src, $(( $(date +%s) - start )) s"
 
-# patches/<repo path with / replaced by _>/NNNN-*.patch, e.g. patches/frameworks_base/
-shopt -s nullglob
-for dir in "$here"/patches/*/; do
-    project="$(basename "$dir" | tr _ /)"
-    for patch in "$dir"*.patch; do
-        if git -C "$project" apply --reverse --check "$patch" 2>/dev/null; then
-            echo "already applied: $project $(basename "$patch")"
-        else
-            git -C "$project" am --3way "$patch"
-        fi
-    done
-done
+# Pin-check all patched projects, preserve local work, and apply only missing recipe commits.
+python3 "$here/scripts/apply-patches.py" "$src"

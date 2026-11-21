@@ -1,61 +1,51 @@
-# Patches
+# Patch index
 
-Owner-controlled Computer Control for GrapheneOS: eight patches, one commit each, made with
-`git format-patch` against GrapheneOS tag **`2026110200`**. What each patch does and why:
-[reviewer guide](../docs/patches.md). Common questions: [FAQ](../docs/faq.md).
+Twelve `git format-patch` files against GrapheneOS **`2026110200`**. The original eight patches
+are preserved; the four additions implement the installed-assistant extension by default.
+Exact upstream commits are recorded in [source-pins.json](../source-pins.json).
+Design: [reviewer guide](../docs/patches.md). Validation: [21 November evidence](../docs/log/2026-11-21-installed-assistants.md).
 
-Status: all eight apply with `git am` to the tag. An image built from the earlier eleven-patch
-form of this series compiled, was signed, flashed and relocked; its source differs only by
-removed licence comments. On-device behaviour is not yet verified; see
-[validation](../docs/regression-tests.md). The re-cut is recorded in
-[the log](../docs/log/2026-11-08-patch-series-recut.md).
-
-## Apply order
-
-| Directory here | GrapheneOS repository | Path in the tree |
+| Directory | Source path | Patches |
 |---|---|---|
-| `build_release/` | `platform_build_release` | `build/release` |
-| `frameworks_base/` | `platform_frameworks_base` | `frameworks/base` |
-| `packages_apps_Settings/` | `platform_packages_apps_Settings` | `packages/apps/Settings` |
+| `build_release/` | `build/release` | 0001 feature/version/consent flags; 0002 consent-app product flag |
+| `frameworks_base/` | `frameworks/base` | 0001 owner lists; 0002 management API; 0003 revocation/construction; 0004 parcel validation; 0005 final authorization |
+| `frameworks_base/` | `frameworks/base` | **0006** installed-assistant role permission, mandatory ordinary owner gates, live revocation, pending-consent invalidation, protected PermissionController, candidate API and upgrade reconciliation |
+| `frameworks_base/` | `frameworks/base` | **0007** shared wrapper installation and compile-only public stubs |
+| `packages_apps_Settings/` | `packages/apps/Settings` | 0001 original owner UI; **0002** one centralized page with selected assistant and searchable inline target switches |
+| `packages_modules_Permission/` | `packages/modules/Permission` | **0001** optional assistant role grant and configuration regression |
 
-Within a repository, apply in numbered order. Across repositories the order does not matter for
-applying, but a working build needs all eight: Settings 0001 calls the API from
-frameworks/base 0002, and nothing works without the flags from build/release 0001. Unlike the
-earlier eleven-patch form, no intermediate frameworks/base state contains the lock-order cycle
-that a later patch had to remove. Intermediate commits have not been compiled one by one.
+Apply numbered order within each repository. All four repositories are required for the advertised
+flow. Settings 0002 uses frameworks/base 0006's signature-protected eligibility query. The role
+permission and PermissionController grant must ship together. The consent product module pulls in
+the wrapper and its existing registration XML. There is no AppFunctions or sepolicy patch.
 
-| Patch | File | Lines | Change |
-|---|---|---|---|
-| build/release 0001 | `0001-computer-control-flags.patch` | 72 | 3 files, +18 |
-| build/release 0002 | `0002-computer-control-consent-app.patch` | 34 | 1 file, +4 |
-| frameworks/base 0001 | `0001-computer-control-user-allowlist.patch` | 749 | 4 files, +584 −5 |
-| frameworks/base 0002 | `0002-computer-control-user-allowlist-api.patch` | 309 | 5 files, +225 |
-| frameworks/base 0003 | `0003-computer-control-revocation-and-creation.patch` | 1105 | 7 files, +465 −133 |
-| frameworks/base 0004 | `0004-computer-control-parameter-validation.patch` | 245 | 2 files, +134 −4 |
-| frameworks/base 0005 | `0005-computer-control-final-authorization.patch` | 385 | 4 files, +162 −27 |
-| Settings 0001 | `0001-computer-control-user-allowlist-ui.patch` | 461 | 6 files, +187 −16 |
+## Apply and verify
 
-No `system/sepolicy` patch is needed (reviewer guide §8.4).
-
-## Apply
-
-In a GrapheneOS checkout at tag `2026110200` (`P` is this directory):
+After syncing the pinned manifest on a build host:
 
 ```bash
-P=/path/to/ballistic-os/patches
-git -C build/release          am "$P"/build_release/*.patch
-git -C frameworks/base        am "$P"/frameworks_base/*.patch
-git -C packages/apps/Settings am "$P"/packages_apps_Settings/*.patch
+python3 /path/to/ballistic-os/scripts/apply-patches.py /path/to/source
 ```
 
-To check a patch without applying it: `git -C <path> apply --check <patch>`. If `git am` stops on
-a conflict after a GrapheneOS rebase, `git am --abort` and regenerate the patch from a work branch
-rebased onto the new tag.
+This checks all project bases and worktrees before mutation. It accepts pristine pinned projects
+or an exact patch-ID prefix of the recipe, skips that prefix, and uses `git am` without three-way
+fallback. A dirty tree, different base, old eleven-commit layout or unrelated commit stops it;
+preserve that work and prepare a separate pinned checkout. Do not reset it or silently rebase.
+`scripts/sync.sh` invokes this same application step, including the Permission module.
+
+For lightweight verification with the four existing `platform_*` research clones:
+
+```bash
+python3 scripts/verify-patches.py /path/to/research-clones
+```
+
+It makes disposable shared sparse clones, applies all patches with `git am` to the pinned commits,
+checks rerun idempotence and dirty-tree refusal, and prints final tree identities. It does not sync
+Android, compile an image, or alter the research worktrees.
 
 ## Regenerate
 
-From a work clone with the patches committed on top of the tag:
-
-```bash
-git format-patch 2026110200..HEAD -o <dir>
-```
+Commit each focused source change above the pinned baseline plus existing patches, then export
+it with `git format-patch -1 --stdout`. Keep the first eight unchanged when extending the series.
+Clean-application checks are required after regeneration. Updating the source release is a separate
+reviewed operation: update MANIFEST and source pins together and record the rebase explicitly.
