@@ -45,8 +45,10 @@ default through `scripts/sync.sh`; there is no silently selected optional varian
 
 Clean patch application and a lightweight javac check of the pinned public extension signature
 and fixture Java are recorded in the [new evidence](docs/log/2026-11-21-installed-assistants.md).
-The extension's full OS/Soong build, Settings and instrumentation tests, APK packaging and device
-flow are **not run**. Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
+The first cloud build found a partition-dependency error during Soong analysis; the appended
+packaging fixes passed clean application and the build has resumed. See the
+[build record](docs/log/2026-11-21-cloud-build-fixes.md). Successful full OS/Soong compilation,
+Settings and instrumentation tests, APK packaging and device flow remain **unverified**. Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
 belong to the pre-extension series; they do not validate this change. This is not a release or a
 claim of GrapheneOS endorsement. See [validation](docs/regression-tests.md).
 

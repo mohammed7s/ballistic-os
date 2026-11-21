@@ -294,8 +294,10 @@ Callbacks are asynchronous; source review does not prove their runtime latency o
 
 ### 0007 `computercontrol: install the shared wrapper and publish compile-only stubs`
 
-The existing consent app requires the existing `com.android.extensions.computercontrol` module,
-which installs its jar and registration XML in system_ext. A public-SDK Java module compiles the
+This patch initially made the consent app require `com.android.extensions.computercontrol`.
+Framework patch 0008 removes that cross-partition dependency; build/make patch 0001 installs the
+jar and registration XML through the system_ext product instead (see the cloud-build correction
+below). A public-SDK Java module compiles the
 existing droidstubs source jar for compile-only app use. Pinned ART trusts system_ext framework
 code; no app-domain or global hidden-API exemption is added. Ordinary clients declare uses-library
 and must not bundle the implementation. The public API/fixture Java contract has a lightweight

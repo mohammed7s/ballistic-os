@@ -13,7 +13,7 @@ Deliverable: a reproducible build and validated installation/update path.
 
 ## 2. Validate the Computer Control gate
 
-The patch set is implemented (twelve patches after the 21 November installed-assistant extension).
+The patch set is implemented (fourteen patches after the 21 November extension and packaging fixes).
 Complete device tests for empty defaults, per-user/signer
 binding, target exclusions, consent, version requirements, revocation and concurrent construction.
 Existing source evidence answers the sepolicy question; runtime checks still matter.

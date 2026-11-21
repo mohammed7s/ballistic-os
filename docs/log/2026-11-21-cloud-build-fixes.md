@@ -41,3 +41,14 @@ idempotent application and dirty-tree refusal with all fourteen patches. Updated
 Other final trees match the [extension source record](2026-11-21-installed-assistants.md).
 This establishes patch application, not successful Soong compilation or runtime behavior.
 The resume starts at vendor preparation, preserving the source download and helper build outputs.
+
+## Resume 1
+
+Recipe `673b53a` was archived and transferred; both machines reported SHA-256
+`ed9edcc3c9cfee8658fab2b2b6f59df123adeb662cf1fb0450b6f920fa62978e`.
+The host applied only the two missing patches using the prefix-aware application script.
+The resume runner is `/srv/ballistic/build-resume1-20261121.sh`, launched as
+`ballistic-build-2026112100-resume1.service` (invocation `424969c9db7d495aabc106579c69594b`)
+at `2026-11-21T12:51:13Z`. It retains the original build number and skips source synchronization.
+Log: `/srv/ballistic/logs/build-2026112100-resume1.log`; exit record uses the same basename
+with `.exit`. The original failure log is retained. This records a restart, not a successful build.
