@@ -121,3 +121,22 @@ Unit `ballistic-build-2026112100-resume3.service`, invocation
 `79dfbe46323145f4b46b9f84d27a18c9`; log/exit files
 `/srv/ballistic/logs/build-2026112100-resume3.{log,exit}`. Launch does not establish compilation
 or test success. Existing platform outputs are reused without cleaning or resyncing.
+
+## Platform compilation passed; test launcher dependency missing
+
+Resume 3 completed its requested `m` targets successfully: `computercontrol.extension.stubs.public`,
+`com.android.extensions.computercontrol`, `VirtualDeviceManager`, `PermissionController`,
+`Settings`, `VirtualDeviceServicesTests`, `PermissionControllerMockingTests` and `SettingsRoboTests`.
+The incremental build reported `24m53.26s Build Succeeded: 1241 steps` and overall build completion
+in 25m15s. This verifies actual Soong/metalava/Java/Kotlin compilation for those modules. It does
+not establish image packaging, ordinary fixture APK compilation or runtime behavior.
+
+The subsequent `atest --host -t` invocation crashed before test execution:
+`/bin/sh: 1: atest_tradefed.sh: not found`, TradeFed exit 127. The pipeline exited 5 at
+`2026-11-21T16:01:58Z`. Its printed "1 test failed" describes a runner crash; there are no
+individual test results. Logs: `/tmp/atest_result_ballistic-build/20261121_165440_hd55frjy/`.
+Pinned `tools/asuite/atest/java/Android.bp` declares `atest-tradefed` with required launcher
+`atest_tradefed.sh`. The previous command skipped test dependency building. Current host-test
+instructions omit `-t`, allowing atest to build its runner dependencies before execution.
+No OS patch is required. The next resume starts with those host tests, then proceeds to image
+packaging only on success, followed by ordinary fixture builds.

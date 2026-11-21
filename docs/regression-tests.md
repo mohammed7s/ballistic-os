@@ -29,13 +29,14 @@ for the actual wrapper/stubs, ordinary APKs, Settings, PermissionController and 
 In the configured full source environment:
 
 ```bash
-atest --host -t --disable-upload-result \
+atest --host --disable-upload-result \
   SettingsRoboTests:ComputerControlAgentPageProviderTest \
   SettingsRoboTests:ComputerControlAutomationTest \
   SettingsRoboTests:ScreenAutomationPageTest
 ```
 
-Record tests and skips individually. The added Settings cases cover label/package search and
+The command includes dependency building: `-t` alone skips it and requires an already-built
+TradeFed launcher. Record tests and skips individually. The added Settings cases cover label/package search and
 candidate exclusion; they do not exercise the Compose page on a device. Inspect that page on the
 actual image: one selected-assistant switch, one searchable installed-target list with inline
 switches, correct app label, no preselected assistant and all fresh grants off. App-info entry

@@ -124,7 +124,7 @@ m computercontrol.extension.stubs.public com.android.extensions.computercontrol 
   OrdinaryComputerControlAssistant OrdinaryComputerControlAssistantNoPermission \
   OrdinaryComputerControlTarget VirtualDeviceServicesTests PermissionControllerMockingTests \
   SettingsRoboTests
-atest --host -t --disable-upload-result \
+atest --host --disable-upload-result \
   SettingsRoboTests:ComputerControlAgentPageProviderTest \
   SettingsRoboTests:ComputerControlAutomationTest \
   SettingsRoboTests:ScreenAutomationPageTest
