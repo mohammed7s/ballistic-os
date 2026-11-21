@@ -16,6 +16,9 @@ for decisions and status. No historical job or approval should be assumed active
 
 ## Experiments and handoff entries
 
+- [2026-11-21-contabo-build-hold.md](2026-11-21-contabo-build-hold.md): cloud source sync stopped
+  after process-hiding malware indicators; clean host recovery pending, VPS retained
+
 - [2026-11-21-installed-assistants.md](2026-11-21-installed-assistants.md): installed-assistant
   role/lifecycle extension, centralized Settings page, ordinary fixtures and lightweight checks;
   full-tree compilation and device validation pending
