@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.example.computercontrol.assistant" android:versionCode="1" android:versionName="1">
+    <uses-permission android:name="android.permission.ACCESS_COMPUTER_CONTROL" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <queries><package android:name="org.example.computercontrol.target" /></queries>
+    <application android:label="Control test assistant" android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:allowBackup="false">
+        <uses-library android:name="com.android.extensions.computercontrol" android:required="true" />
+        <activity android:name="org.example.computercontrol.assistant.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

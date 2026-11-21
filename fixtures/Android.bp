@@ -1,0 +1,38 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+// Built explicitly for adb installation; no PRODUCT_PACKAGES/preinstall entry.
+android_app_defaults {
+    name: "ordinary_computer_control_fixture_defaults",
+    sdk_version: "current",
+    min_sdk_version: "37",
+    target_sdk_version: "37",
+    certificate: "testkey",
+    optimize: { enabled: false },
+}
+
+android_app {
+    name: "OrdinaryComputerControlAssistant",
+    defaults: ["ordinary_computer_control_fixture_defaults"],
+    manifest: "assistant/AndroidManifest.xml",
+    srcs: ["assistant/src/**/*.java"],
+    libs: ["computercontrol.extension.stubs.public"],
+    uses_libs: ["com.android.extensions.computercontrol"],
+}
+
+android_app {
+    name: "OrdinaryComputerControlAssistantNoPermission",
+    defaults: ["ordinary_computer_control_fixture_defaults"],
+    manifest: "assistant/AndroidManifest-no-permission.xml",
+    srcs: ["assistant/src/**/*.java"],
+    libs: ["computercontrol.extension.stubs.public"],
+    uses_libs: ["com.android.extensions.computercontrol"],
+}
+
+android_app {
+    name: "OrdinaryComputerControlTarget",
+    defaults: ["ordinary_computer_control_fixture_defaults"],
+    manifest: "target/AndroidManifest.xml",
+    srcs: ["target/src/**/*.java"],
+}
