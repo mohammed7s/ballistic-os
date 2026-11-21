@@ -38,7 +38,7 @@ assistant's policy; apps remain free to recognize or reject automation.
 
 ## Patches and status
 
-**21 November 2026:** twelve patches in four repositories, against GrapheneOS tag `2026110200`.
+**21 November 2026:** fourteen patches in five repositories, against GrapheneOS tag `2026110200`.
 The original eight remain intact. The extension adds a role permission grant, lifecycle handling,
 shared-library packaging/public compile stubs and the centralized Settings page. It applies by
 default through `scripts/sync.sh`; there is no silently selected optional variant or newer base.

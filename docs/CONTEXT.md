@@ -36,7 +36,7 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 
 ## Installed-assistant extension, 21 November 2026
 
-The authorized extension is implemented as four appended patches (twelve total, four repositories).
+The authorized extension is implemented as four extension patches plus two build fixes (fourteen total, five repositories).
 `ACCESS_COMPUTER_CONTROL` is now `internal|privileged|role`; PermissionController grants it only
 to a qualifying selected assistant requesting it. Ordinary clients require both signer-bound owner
 gates even if vendor allowlists match. Existing privileged grants and their vendor path remain.
@@ -55,8 +55,10 @@ The installed system_ext wrapper and generated public compile stubs support ordi
 without global hidden-API exemptions. The minimal assistant/target fixtures exercise the contract;
 the real app's Screen/Hands/model/policy adapters and AppFunctions remain out of scope.
 
-Source and build contract: [assistant integration](assistant-integration.md). New patches have not
-had a full-tree build or device run. A lightweight public-SDK javac contract check passed; clean
+Source and build contract: [assistant integration](assistant-integration.md). The first full-tree build found a
+partition-dependency error during vendor helper preparation. Two appended packaging patches
+correct it; successful compilation and device execution remain pending. See the
+[cloud build record](log/2026-11-21-cloud-build-fixes.md). A lightweight public-SDK javac contract check passed; clean
 application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).
 At this pin, EnhancedConfirmationService does not protect assistant role selection; no bypass
 is added. Record installer-specific behavior on-device rather than assuming accessibility rules.
@@ -66,7 +68,7 @@ is added. Record installer-specific behavior on-device rather than assuming acce
 The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe commit `6b936cf`
 (patch contents from reviewed `d02b997`) built as `2026110700`. The pre-extension eight-patch series
 had the same final source apart from removed licence comments; it was not compiled itself.
-The current twelve-patch series adds the installed-assistant extension and needs a new build.
+The current fourteen-patch series adds the installed-assistant extension and needs a new build.
 For that historical eleven-patch snapshot, compilation and signing passed. Focused Settings host
 tests passed 11 cases with 3 assumption skips; instrumentation package compilation did not mean
 its device tests ran.

@@ -1,0 +1,29 @@
+From 033d4105894ea2b51d202d5e4da00832c26fe1ac Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 21 Nov 2026 15:49:39 +0300
+Subject: [PATCH] computercontrol: install the wrapper from the system_ext
+ product
+
+Use the same release flag as VirtualDeviceManager. Keeping installation in its own partition avoids a non-generic dependency in the generic system image. The wrapper continues to require its existing library registration XML.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ target/product/media_system_ext.mk | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/target/product/media_system_ext.mk b/target/product/media_system_ext.mk
+index bd5328f..cc8c3f8 100644
+--- a/target/product/media_system_ext.mk
++++ b/target/product/media_system_ext.mk
+@@ -28,3 +28,8 @@ PRODUCT_PACKAGES += \
+ ifneq ($(PRODUCT_IS_ATV),true)
+     $(call inherit-product, $(SRC_TARGET_DIR)/product/window_extensions_base.mk)
+ endif
++
++# Install the shared wrapper alongside the Computer Control consent app.
++ifeq ($(RELEASE_PACKAGE_COMPUTER_CONTROL),true)
++  PRODUCT_PACKAGES += com.android.extensions.computercontrol
++endif
+-- 
+2.53.0
+

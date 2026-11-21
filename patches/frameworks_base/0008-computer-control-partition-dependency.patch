@@ -1,0 +1,27 @@
+From 4ae6bb50f4f0171e9143e7b144ac363df8663eee Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Sat, 21 Nov 2026 15:49:38 +0300
+Subject: [PATCH] computercontrol: avoid a cross-partition required dependency
+
+The generic system image rejects a required dependency on the system_ext wrapper. Install the wrapper through the system_ext product configuration instead; retain the public compile-only module.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ packages/VirtualDeviceManager/Android.bp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/packages/VirtualDeviceManager/Android.bp b/packages/VirtualDeviceManager/Android.bp
+index 8ef12c62e..cdcdf7882 100644
+--- a/packages/VirtualDeviceManager/Android.bp
++++ b/packages/VirtualDeviceManager/Android.bp
+@@ -7,7 +7,6 @@ android_app {
+     name: "VirtualDeviceManager",
+     defaults: ["platform_app_defaults"],
+     certificate: "platform",
+-    required: ["com.android.extensions.computercontrol"],
+     srcs: ["src/**/*.java"],
+     static_libs: [
+         "SettingsLibSettingsTheme",
+-- 
+2.53.0
+

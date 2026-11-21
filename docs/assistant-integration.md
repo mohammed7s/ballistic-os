@@ -3,8 +3,10 @@
 Experimental recipe for GrapheneOS `2026110200`, extended 21 November 2026. The production path
 is a normal, independently signed `/data/app` APK. No platform signature, preinstallation,
 privapp allowlist, root, `pm grant`, shell identity, or `testOnly` flag is involved.
-The source and fixture Java contract are checked; full-tree compilation and device execution
-of this extension are **not run**. See the [dated evidence](log/2026-11-21-installed-assistants.md).
+The source and fixture Java contract are checked. The first full-tree build reached Soong
+analysis and found a packaging error; the correction and resumed build are recorded in the
+[cloud build log](log/2026-11-21-cloud-build-fixes.md). No successful full-tree compilation or
+device execution is claimed. See also the [source evidence](log/2026-11-21-installed-assistants.md).
 
 ## Owner flow
 
@@ -46,8 +48,10 @@ uses the simpler activity. The role remains unavailable in managed profiles at t
 ```
 
 The library is `/system_ext/framework/com.android.extensions.computercontrol.jar`, registered by
-`/system_ext/etc/permissions/computercontrol.extension.xml`. The consent app's `required` dependency
-now installs it. The existing XML also publishes feature `com.android.extensions.computercontrol`.
+`/system_ext/etc/permissions/computercontrol.extension.xml`. The `media_system_ext.mk` product
+configuration installs it when `RELEASE_PACKAGE_COMPUTER_CONTROL` is enabled. The same flag
+installs the consent app in the system partition. The existing XML also publishes feature
+`com.android.extensions.computercontrol`.
 ART at the pin assigns jars in `/system_ext/framework` the platform domain, allowing the wrapper's
 internal framework calls. The calling APK remains ordinary, and binder authorization is unchanged.
 Do not statically bundle the implementation: code copied into the APK has the application's domain.

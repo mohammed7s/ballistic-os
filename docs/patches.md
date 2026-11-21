@@ -1,6 +1,6 @@
 # Reviewer guide: owner-controlled Computer Control
 
-Target: GrapheneOS tag `2026110200` (Android 17). Twelve patches in four repositories. Apply
+Target: GrapheneOS tag `2026110200` (Android 17). Fourteen patches in five repositories. Apply
 order and commands: [patch index](../patches/README.md). Common questions: [FAQ](faq.md).
 Review history of the earlier eleven-patch series:
 [dated record](log/2026-11-07-patch-design-and-review-history.md).
@@ -447,3 +447,15 @@ need a device:
 - Back pressed on a root activity, racing creation and revocation, does not stall.
 - `adb shell cmd device_config put computer_control ...` has no effect.
 - No `avc: denied` for `system_server` around `/dev/uinput`.
+
+## 21 November cloud-build packaging correction
+
+The first full-tree Soong analysis rejected the consent app's `required` edge to the
+`system_ext` wrapper: `aosp_shared_system_image` includes non-generic modules. Framework
+patch 0008 removes that edge; build/make patch 0001 adds the wrapper to
+`target/product/media_system_ext.mk` under `RELEASE_PACKAGE_COMPUTER_CONTROL`, the same
+flag that installs the consent app. The library still requires its existing registration XML.
+This preserves partition boundaries and library loading behavior without relaxing the generic
+image check or changing access control. Files touched: the consent app's `Android.bp` and
+`media_system_ext.mk`. Public stubs, authorization, consent, revocation, ART and SELinux stay
+unchanged. The preceding twelve patches remain byte-for-byte intact.

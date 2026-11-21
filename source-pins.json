@@ -4,6 +4,7 @@
     "build/release": "6f3f4075803f96161d037b35c168d623bd2b0d4f",
     "frameworks/base": "ad133394d44339da17d691fd45d51afb161b94ae",
     "packages/apps/Settings": "b6ef57550748eb6f54ebab4914c6e630a20fd07a",
-    "packages/modules/Permission": "1539b4b9d7492b3bfac6a61f8413a6632a0cce56"
+    "packages/modules/Permission": "1539b4b9d7492b3bfac6a61f8413a6632a0cce56",
+    "build/make": "3ec7131c58881d0b5e751775cf76986fe3889517"
   }
 }
