@@ -52,3 +52,42 @@ The resume runner is `/srv/ballistic/build-resume1-20261121.sh`, launched as
 at `2026-11-21T12:51:13Z`. It retains the original build number and skips source synchronization.
 Log: `/srv/ballistic/logs/build-2026112100-resume1.log`; exit record uses the same basename
 with `.exit`. The original failure log is retained. This records a restart, not a successful build.
+
+## Ubuntu build-sandbox correction and resume 2
+
+Resume 1 passed the generic-image check and compiled adevtool's helper targets:
+`ninja: 15m52.74s Build Succeeded: 7485 steps`. The enclosing adevtool command then rejected
+Soong's stderr warning, `Build sandboxing disabled due to nsjail error.` Pipeline exit was 1
+at `2026-11-21T13:21:30Z`. This is successful helper compilation, not phone-target compilation.
+
+The detailed Soong log showed `mount('/', '/', ... MS_REC|MS_PRIVATE): Permission denied`.
+The host kernel journal identified AppArmor's `unprivileged_userns` profile denying nsjail's
+mount, setgid and dac_override operations. Ubuntu's
+`kernel.apparmor_restrict_unprivileged_userns` was 1. Existing host profiles demonstrate the
+named `flags=(unconfined)` plus `userns,` exception for applications needing namespaces.
+
+Installed `/etc/apparmor.d/ballistic-build-nsjail`, owned by root, mode 0644:
+
+```text
+# Permit the pinned Android build sandbox to create its user namespace.
+# Keep Ubuntu's restriction enabled for other unconfined programs.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile ballistic-build-nsjail /srv/ballistic/gos/prebuilts/build-tools/linux-x86/bin/nsjail flags=(unconfined) {
+  userns,
+}
+```
+
+Loaded with `apparmor_parser -r /etc/apparmor.d/ballistic-build-nsjail`. The same namespace,
+UID/GID, bind-mount and hostname probe used by Soong then printed `Android Success`, exited 0
+as `ballistic-build`, and the global restriction remained 1. Probe log:
+`/srv/ballistic/logs/nsjail-probe-20261121.log`. This host rule attaches only to the named
+source-tree nsjail executable; that tree remains writable by the dedicated build user.
+No GrapheneOS source patch, stderr filtering or global AppArmor disablement was used.
+
+Resume 2 uses the same code recipe `673b53a`, fourteen patches and tree checks. Runner:
+`/srv/ballistic/build-resume2-20261121.sh`; unit `ballistic-build-2026112100-resume2.service`,
+invocation `d7586131932a4e5181b78a17378ab447`. Log and exit record:
+`/srv/ballistic/logs/build-2026112100-resume2.{log,exit}`. Existing helper outputs are retained.
+Successful phone compilation, host tests, image packaging and device validation remain pending.
