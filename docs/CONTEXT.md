@@ -42,6 +42,9 @@ and reports Computer Control packaging enabled. A persistent build job uses a se
 directory, preserving Pixel artifacts. Image compilation, boot and runtime validation are pending;
 see [build evidence and live log paths](log/2026-11-22-emulator-build.md). The SDK emulator target
 is for development, not a supported GrapheneOS device release.
+The first two attempts stopped in bootstrap/analysis because the separate absolute external
+output path was not supported by build-tool/module rules. Resume 2 uses a dedicated
+source-relative `out-emulator-20261122`, leaving Pixel `out/` intact. No image exists yet.
 
 The authorized extension is implemented as four extension patches plus three build fixes (fifteen total, five repositories).
 `ACCESS_COMPUTER_CONTROL` is now `internal|privileged|role`; PermissionController grants it only

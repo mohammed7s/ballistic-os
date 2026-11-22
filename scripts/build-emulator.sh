@@ -7,18 +7,20 @@ set -eo pipefail
 [[ $# == 2 ]] || { echo "Usage: $0 SOURCE_DIR SEPARATE_OUTPUT_DIR" >&2; exit 1; }
 recipe=$(cd "$(dirname "$0")/.." && pwd)
 src=$(realpath "$1")
-export OUT_DIR=$(realpath -m "$2")
-case "$OUT_DIR" in
-    "$src"|"$src"/*|/) echo 'Output must be outside the source tree.' >&2; exit 1 ;;
-esac
-mkdir -p "$OUT_DIR"
-exec 9>"$OUT_DIR/.ballistic-build.lock"
+output=$(realpath -m "$2")
+# Some Soong module paths reject absolute/external outputs at this pin.
+# Use a dedicated source-relative sibling of the Pixel's out/, never out/ itself.
+[[ $(dirname "$output") == "$src" && $(basename "$output") == out-emulator-* ]] || {
+    echo 'Output must be a direct SOURCE_DIR/out-emulator-* directory.' >&2; exit 1;
+}
+mkdir -p "$output"
+exec 9>"$output/.ballistic-build.lock"
 flock -n 9 || { echo 'Another emulator build owns this output directory.' >&2; exit 1; }
 python3 "$recipe/scripts/apply-patches.py" "$src"
 cd "$src"
+export OUT_DIR=$(basename "$output")
 export BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d)00}"
-# This pin's default Siso executor cannot resolve its generated main.star with
-# this separate absolute OUT_DIR. Use the supported local Ninja executor.
+# Keep the supported local executor used after the first Siso bootstrap failure.
 export SOONG_NINJA=ninja
 unset OFFICIAL_BUILD
 source build/envsetup.sh

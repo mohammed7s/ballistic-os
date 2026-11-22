@@ -42,11 +42,11 @@ actual build exit status and artifact hashes. A monitor exiting successfully is 
 ### Development SDK emulator
 
 For a separate x86_64 development image, use the same pinned patched source and an output
-directory outside that source tree:
+directory named `out-emulator-*` directly inside that source tree:
 
 ```bash
 BUILD_NUMBER=<chosen-number> BUILD_JOBS=18 \
-  scripts/build-emulator.sh /path/to/source /path/to/separate-emulator-output
+  scripts/build-emulator.sh /path/to/source /path/to/source/out-emulator-dev
 ```
 
 This selects `sdk_phone64_x86_64-cur-userdebug` and the supported local Ninja executor, then
@@ -58,6 +58,8 @@ two invocations of this script using the same output; coordinate other source-tr
 starting. Build as the existing unprivileged source owner. This is a development target, not
 a supported GrapheneOS device release. Build and runtime evidence belongs in the dated log;
 the existence of this script does not establish boot or Computer Control functionality.
+The recipe passes this directory to Soong as a relative path. An external absolute path failed
+module path validation at this pin; it must not be reused even though `lunch` accepted it.
 
 ### Platform modules
 

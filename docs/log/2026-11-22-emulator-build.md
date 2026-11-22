@@ -55,9 +55,29 @@ The resume uses the same output directory and preserves the original failure evi
 - Log: `/srv/ballistic/logs/emulator-2026112200-resume1.log`
 - Completion status: `/srv/ballistic/logs/emulator-2026112200-resume1.exit`
 
-The resumed job passed the point of the original failure and was observed compiling the
-bootstrap build tools (67 of 292 bootstrap actions). This is not the percentage complete for
-the OS image. The final build result and boot remain pending.
+The resumed job passed the original failure and compiled the bootstrap build tools. It then
+failed at `2026-11-22T10:43:20Z` after an 18-minute build invocation. Soong's analysis rejected
+`continuous_native_tests` at `platform_testing/Android.bp:255`: `Path is outside directory` for
+the generated `net-tests-utils-host-common.jar` under the absolute external output directory.
+This was discovered on the owner's next status request at approximately 17:15 UTC; the build
+was not running during the intervening hours. No OS image was produced.
+
+## Resume 2: source-relative dedicated output
+
+The recipe now requires a direct `SOURCE_DIR/out-emulator-*` directory and exports its basename
+as relative `OUT_DIR`. The Pixel's `out/` and the failed external output are retained. This
+addresses the reported path-validation failure without changing platform code or disabling
+validation. Shell syntax and diff checks pass; full build validation remains pending.
+
+- Unit: `ballistic-emulator-2026112200-resume2.service`
+- Runner: `/srv/ballistic/build-emulator-20261122-resume2.sh`
+- Log: `/srv/ballistic/logs/emulator-2026112200-resume2.log`
+- Completion status: `/srv/ballistic/logs/emulator-2026112200-resume2.exit`
+- Output: `/srv/ballistic/gos/out-emulator-20261122`
+
+The ThinkPad was reachable again at 17:15 UTC. Its separate stock API-37 SDK download process
+survived the SSH disconnect but still reported 22% and had no installed package metadata. This
+download is not the patched image and does not establish Computer Control availability.
 
 The systemd job survives an SSH disconnect. Inspect its actual log and exit status before
 reporting completion. It builds the emulator ZIP and public Computer Control compile stub, then
