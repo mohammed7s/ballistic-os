@@ -17,6 +17,9 @@ flock -n 9 || { echo 'Another emulator build owns this output directory.' >&2; e
 python3 "$recipe/scripts/apply-patches.py" "$src"
 cd "$src"
 export BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d)00}"
+# This pin's default Siso executor cannot resolve its generated main.star with
+# this separate absolute OUT_DIR. Use the supported local Ninja executor.
+export SOONG_NINJA=ninja
 unset OFFICIAL_BUILD
 source build/envsetup.sh
 lunch sdk_phone64_x86_64-cur-userdebug

@@ -49,8 +49,9 @@ BUILD_NUMBER=<chosen-number> BUILD_JOBS=18 \
   scripts/build-emulator.sh /path/to/source /path/to/separate-emulator-output
 ```
 
-This selects `sdk_phone64_x86_64-cur-userdebug` and builds `emu_img_zip` plus the public
-Computer Control stub. It verifies consent-app packaging is enabled and checks the installed
+This selects `sdk_phone64_x86_64-cur-userdebug` and the supported local Ninja executor, then
+builds `emu_img_zip` plus the public Computer Control stub. It verifies consent-app packaging
+is enabled and checks the installed
 wrapper/XML and image ZIP after compilation. It does not clean the Pixel output, run vendor
 extraction, sign a production release, or flash a device. The output-directory lock prevents
 two invocations of this script using the same output; coordinate other source-tree users before

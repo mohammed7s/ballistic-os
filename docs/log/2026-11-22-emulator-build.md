@@ -25,7 +25,7 @@ The source's `device/generic/goldfish/build/tasks.workaround/emu_img_zip.mk` def
 vendor and ramdisk images with the emulator kernel and configuration. Compilation and boot
 are still separate checks.
 
-## Running build
+## Initial attempt and resumed build
 
 The reusable recipe is [build-emulator.sh](../../scripts/build-emulator.sh). Shell syntax and
 diff checks passed locally. The build runner invokes it with `BUILD_NUMBER=2026112200` and
@@ -39,6 +39,25 @@ ordinary test fixtures into the product or add a permission bypass.
 - Log: `/srv/ballistic/logs/emulator-2026112200.log`
 - Completion status: `/srv/ballistic/logs/emulator-2026112200.exit` (written only on runner exit)
 - Output: `/srv/ballistic/out-emulator-20261122`
+
+The initial job exited 1 at `2026-11-22T10:22:49Z`, during Soong bootstrap, before OS compilation.
+The default Siso executor reported `failed to load @config//main.star: open main.star: no such
+file or directory`. The generated file exists in the separate absolute output directory; its
+resolution by the executor failed. The source's `build/soong/ui/build/config.go` supports
+`SOONG_NINJA=ninja`, so the recipe now explicitly selects that local executor. No platform source,
+feature flag, sandbox or authorization check was changed to address this build-tool failure.
+
+The resume uses the same output directory and preserves the original failure evidence:
+
+- Unit: `ballistic-emulator-2026112200-resume1.service`
+- Invocation: `715577c84e2042948865340dfaf12cf0`
+- Runner: `/srv/ballistic/build-emulator-20261122-resume1.sh`
+- Log: `/srv/ballistic/logs/emulator-2026112200-resume1.log`
+- Completion status: `/srv/ballistic/logs/emulator-2026112200-resume1.exit`
+
+The resumed job passed the point of the original failure and was observed compiling the
+bootstrap build tools (67 of 292 bootstrap actions). This is not the percentage complete for
+the OS image. The final build result and boot remain pending.
 
 The systemd job survives an SSH disconnect. Inspect its actual log and exit status before
 reporting completion. It builds the emulator ZIP and public Computer Control compile stub, then
