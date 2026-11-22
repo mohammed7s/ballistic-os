@@ -130,3 +130,12 @@ its [platform contract](https://github.com/mohammed7s/ballistic/blob/master/docs
 
 Source facts: [FACTS.md](FACTS.md). Patch rationale: [patches.md](patches.md). Reviewer questions: [faq.md](faq.md).
 Keep new decisions here and dated build/session details in [log/](log/README.md).
+
+## Current signing and delivery, 22 November 2026
+
+The owner requested cloud signing with the existing disposable test identity. The ThinkPad is
+reachable with 77 GiB free. Cloud signing is running in a separate workspace with temporary
+tmpfs key custody and cleanup on exit; direct restricted download is queued on the ThinkPad.
+The transfer verifies checksums, the pinned factory signer and extracted AVB key, and does not
+flash the phone. See [signing/delivery record](log/2026-11-22-cloud-test-signing.md).
+The VPS and storage remain retained as requested.
