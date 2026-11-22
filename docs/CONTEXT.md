@@ -61,7 +61,7 @@ corrected it. The resumed build completed vendor preparation and reached Setting
 a third correction explicitly types the new switch callbacks. Compilation of the requested
 platform/library and test modules and full unsigned OS packaging now pass as `2026112100`.
 Focused Settings host tests passed 14 cases, with 3 assumption skips and no failures. The three separate
-fixture APKs compiled after a Soong defaults correction and passed signature checks. Signing, delivery and device execution remain
+fixture APKs compiled after a Soong defaults correction and passed signature checks. Signing and verified ThinkPad delivery completed; device installation and execution remain
 pending; see the [unsigned image record](log/2026-11-22-unsigned-image.md). See the
 [cloud build record](log/2026-11-21-cloud-build-fixes.md). A lightweight public-SDK javac contract check passed; clean
 application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).
@@ -75,7 +75,7 @@ The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe com
 had the same final source apart from removed licence comments; it was not compiled itself.
 The current fifteen-patch series adds the installed-assistant extension. Its requested platform
 and test modules and unsigned image packages built on Contabo; host tests passed 14 cases with
-3 assumption skips. Signing and device validation remain pending.
+3 assumption skips. Signing and ThinkPad verification passed; installation and device validation remain pending.
 For that historical eleven-patch snapshot, compilation and signing passed. Focused Settings host
 tests passed 11 cases with 3 assumption skips; instrumentation package compilation did not mean
 its device tests ran.
@@ -135,8 +135,9 @@ Keep new decisions here and dated build/session details in [log/](log/README.md)
 
 The owner requested cloud signing with the existing disposable test identity. The ThinkPad is
 reachable with 77 GiB free. Cloud signing completed successfully at 06:49:06 UTC with the matching factory and AVB
-identity. Temporary cloud key copies were removed; direct restricted download is running on
-the ThinkPad. Download verification and device validation remain pending.
+identity. Temporary cloud key copies were removed. ThinkPad download, checksum/signature checks,
+extraction and AVB public-key verification completed at 07:23:59 UTC. The sleep inhibitor was
+released and 69 GiB remains free. Installation and device validation remain pending.
 The transfer verifies checksums, the pinned factory signer and extracted AVB key, and does not
 flash the phone. See [signing/delivery record](log/2026-11-22-cloud-test-signing.md).
 The VPS and storage remain retained as requested.

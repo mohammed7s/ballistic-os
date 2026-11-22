@@ -82,3 +82,22 @@ The install/OTA/public verification files and separate fixture APKs are publishe
 `/srv/ballistic/publish/2026112100/`. The ThinkPad's automatic direct transfer started after
 publication and was observed receiving data, with initial speeds around 1–2 MB/s.
 Transfer verification and extraction are still pending; no phone command was issued.
+
+## ThinkPad delivery completed
+
+The transfer finished at `2026-11-22T07:23:59Z`, exit 0. On the ThinkPad, SHA-256 verification
+passed for the installation ZIP, detached signature, full OTA, public AVB key and all three
+fixture APKs. The factory signature passed against the separately pinned signer. Extraction
+completed, and the extracted AVB key matched the expected existing test identity.
+
+Ready paths on ThinkPad:
+
+- Installation ZIP: `/home/ubuntu/ballistic-images/2026112100/blazer-install-2026112100.zip`
+- Full OTA: `/home/ubuntu/ballistic-images/2026112100/blazer-ota_update-2026112100.zip`
+- Extracted installation: `/home/ubuntu/ballistic-images/2026112100/extracted/blazer-install-2026112100/`
+- Fixture APKs and verification files: `/home/ubuntu/ballistic-images/2026112100/`
+
+The temporary sleep inhibitor service is inactive after completion. ThinkPad free space is
+69 GiB; earlier builds are retained. The VPS, source, unsigned outputs and signed target-files
+remain retained as requested. No phone command or flashing was performed. Installation choice,
+current device identity/boot checks and runtime regression validation remain separate next steps.

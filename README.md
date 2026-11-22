@@ -48,7 +48,9 @@ and fixture Java are recorded in the [new evidence](docs/log/2026-11-21-installe
 The full unsigned OS packages built successfully as `2026112100`. Focused Settings host tests:
 **14 passed, 0 failed, 3 assumption skips**. The actual wrapper/public stubs and instrumentation
 modules also compiled. All three separate fixture APKs compiled and passed signature checks. Release signing passed
-with the existing test identity; ThinkPad delivery and device validation remain pending. See the [image record](docs/log/2026-11-22-unsigned-image.md).
+with the existing test identity, and ThinkPad download, signature and extracted AVB-key checks
+passed. Installation and device validation remain pending. See the
+[delivery record](docs/log/2026-11-22-cloud-test-signing.md). See the [image record](docs/log/2026-11-22-unsigned-image.md).
 Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
 belong to the pre-extension series; they do not validate this change. This is not a release or a
 claim of GrapheneOS endorsement. See [validation](docs/regression-tests.md).
