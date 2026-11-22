@@ -137,7 +137,10 @@ The owner requested cloud signing with the existing disposable test identity. Th
 reachable with 77 GiB free. Cloud signing completed successfully at 06:49:06 UTC with the matching factory and AVB
 identity. Temporary cloud key copies were removed. ThinkPad download, checksum/signature checks,
 extraction and AVB public-key verification completed at 07:23:59 UTC. The sleep inhibitor was
-released and 69 GiB remains free. Installation and device validation remain pending.
+released and 69 GiB remains free. The matching-key recovery OTA subsequently completed, the owner
+confirmed recovery success, and ADB verified build `2026112100` booted with a locked bootloader
+and the Computer Control shared library registered and present. The update sleep inhibitor is
+also released. Assistant session execution, consent and revocation remain unverified on-device.
 The transfer verifies checksums, the pinned factory signer and extracted AVB key, and does not
 flash the phone. See [signing/delivery record](log/2026-11-22-cloud-test-signing.md).
 The VPS and storage remain retained as requested.

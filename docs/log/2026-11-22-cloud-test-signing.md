@@ -123,3 +123,37 @@ than the installed build and metadata requests no wipe. These checks support sel
 recovery OTA update path with the existing locked bootloader, subject to recovery's own checks.
 No reboot or update was issued during this precheck. Current installation/backup confirmation
 is requested before applying the update, per `docs/flashing.md`'s before-installation procedure.
+
+## Recovery OTA and boot verification completed
+
+The owner confirmed there was nothing important to preserve, proceeded with the proposed
+matching-key OTA, and selected Apply update from ADB in recovery. ThinkPad service
+`ballistic-ota-install-2026112100.service` verified the OTA checksum, started sideload at
+`2026-11-22T07:45:25Z`, and completed at `2026-11-22T07:51:45Z` with exit 0.
+Its script, log and exit marker are in `/home/ubuntu/ballistic-images/2026112100/`
+as `ota-install.sh`, `ota-install.log` and `ota-install.exit`. The owner separately confirmed
+recovery displayed completion, selected Reboot system now, and reported that it worked.
+No factory flash, wipe, unlock, relock or signing-key change was performed.
+
+Subsequent read-only ADB checks on serial `56181FDCH0070R` returned:
+
+```text
+ro.build.version.incremental=2026112100
+sys.boot_completed=1
+ro.boot.flash.locked=1
+ro.boot.vbmeta.device_state=locked
+ro.boot.verifiedbootstate=yellow
+library:com.android.extensions.computercontrol
+/system_ext/framework/com.android.extensions.computercontrol.jar
+```
+
+This verifies the new build booted with the bootloader locked and the extension registered
+and present. The custom-key boot state is unchanged from the precheck; these properties do
+not independently read the displayed AVB public-key hash. The update sleep inhibitor was
+stopped and confirmed inactive. The VPS and storage remain retained.
+
+The owner is returning to app development. Use `docs/assistant-integration.md` for the ordinary
+assistant contract. No fixture or real assistant was installed or exercised in this session;
+role authorization, per-target consent, session notifications, observation/input and revocation
+still require the device matrix in `docs/regression-tests.md`. Boot and library registration
+are not evidence that the full Computer Control session flow works.
