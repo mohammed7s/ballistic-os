@@ -39,6 +39,27 @@ actual build exit status and artifact hashes. A monitor exiting successfully is 
 
 ## Extension compile and regression targets
 
+### Development SDK emulator
+
+For a separate x86_64 development image, use the same pinned patched source and an output
+directory outside that source tree:
+
+```bash
+BUILD_NUMBER=<chosen-number> BUILD_JOBS=18 \
+  scripts/build-emulator.sh /path/to/source /path/to/separate-emulator-output
+```
+
+This selects `sdk_phone64_x86_64-cur-userdebug` and builds `emu_img_zip` plus the public
+Computer Control stub. It verifies consent-app packaging is enabled and checks the installed
+wrapper/XML and image ZIP after compilation. It does not clean the Pixel output, run vendor
+extraction, sign a production release, or flash a device. The output-directory lock prevents
+two invocations of this script using the same output; coordinate other source-tree users before
+starting. Build as the existing unprivileged source owner. This is a development target, not
+a supported GrapheneOS device release. Build and runtime evidence belongs in the dated log;
+the existence of this script does not establish boot or Computer Control functionality.
+
+### Platform modules
+
 The fifteen-patch extension has produced unsigned OS packages and passed focused host tests;
 see the [image record](log/2026-11-22-unsigned-image.md) for limits and remaining validation. Before signing, build the wrapper/stubs, PermissionController, Settings,
 VirtualDeviceManager, ordinary fixture APKs and instrumentation packages using the exact commands

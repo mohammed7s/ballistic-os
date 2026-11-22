@@ -36,6 +36,13 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 
 ## Installed-assistant extension, 21 November 2026
 
+**22 November: separate emulator build started.** The owner authorized the app session to use
+Contabo for this build. The existing patched source accepts `sdk_phone64_x86_64-cur-userdebug`
+and reports Computer Control packaging enabled. A persistent build job uses a separate output
+directory, preserving Pixel artifacts. Image compilation, boot and runtime validation are pending;
+see [build evidence and live log paths](log/2026-11-22-emulator-build.md). The SDK emulator target
+is for development, not a supported GrapheneOS device release.
+
 The authorized extension is implemented as four extension patches plus three build fixes (fifteen total, five repositories).
 `ACCESS_COMPUTER_CONTROL` is now `internal|privileged|role`; PermissionController grants it only
 to a qualifying selected assistant requesting it. Ordinary clients require both signer-bound owner
