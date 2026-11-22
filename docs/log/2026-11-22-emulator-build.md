@@ -75,6 +75,11 @@ validation. Shell syntax and diff checks pass; full build validation remains pen
 - Completion status: `/srv/ballistic/logs/emulator-2026112200-resume2.exit`
 - Output: `/srv/ballistic/gos/out-emulator-20261122`
 
+At `2026-11-22T18:39:01Z`, resume 2 was active and had passed bootstrap and Soong analysis.
+Ninja was compiling the full image graph: 5,055 of 162,044 actions (3% by action count), with
+active clang processes and 251 GiB free. This establishes progress past both earlier failures;
+action percentage is not elapsed-time percentage, and image completion/boot remain pending.
+
 The ThinkPad was reachable again at 17:15 UTC. Its separate stock API-37 SDK download process
 survived the SSH disconnect but still reported 22% and had no installed package metadata. This
 download is not the patched image and does not establish Computer Control availability.
