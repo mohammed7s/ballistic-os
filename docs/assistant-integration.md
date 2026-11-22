@@ -5,8 +5,9 @@ is a normal, independently signed `/data/app` APK. No platform signature, preins
 privapp allowlist, root, `pm grant`, shell identity, or `testOnly` flag is involved.
 The source and fixture Java contract are checked. Cloud compilation now passed for the actual
 wrapper/public stubs, Settings, PermissionController, consent app and requested platform test
-modules after the recorded corrections. Host-test execution, ordinary fixture APK builds, image
-packaging and device behavior remain unverified. See the
+modules after the recorded corrections. Full unsigned image packaging and the focused host tests passed (14 passed, 3 assumption skips).
+Ordinary fixture APK builds, signing and device behavior remain pending; see the
+[image record](log/2026-11-22-unsigned-image.md). See the
 [cloud build log](log/2026-11-21-cloud-build-fixes.md) and
 [source evidence](log/2026-11-21-installed-assistants.md).
 

@@ -23,7 +23,7 @@ DEVICE=blazer BUILD_NUMBER=<chosen-number> scripts/build.sh /path/to/grapheneos-
 ```
 
 Replace the path and build number. `sync.sh` verifies the pinned manifest tag and applies the
-series with `git am`. The application helper audits all four patched projects against
+series with `git am`. The application helper audits all five patched projects against
 [source-pins.json](../source-pins.json), accepting only the pin or an exact patch-ID prefix.
 It refuses dirty trees, foreign commits and mismatched bases before applying anything; it does
 not rebase or reset local work. Preserve and resolve divergent work separately. For an already
@@ -39,8 +39,8 @@ actual build exit status and artifact hashes. A monitor exiting successfully is 
 
 ## Extension compile and regression targets
 
-The twelve-patch extension requires a fresh full-tree build; historical build success applies
-to the earlier source only. Before signing, build the wrapper/stubs, PermissionController, Settings,
+The fifteen-patch extension has produced unsigned OS packages and passed focused host tests;
+see the [image record](log/2026-11-22-unsigned-image.md) for limits and remaining validation. Before signing, build the wrapper/stubs, PermissionController, Settings,
 VirtualDeviceManager, ordinary fixture APKs and instrumentation packages using the exact commands
 in [assistant integration](assistant-integration.md#fixtures-and-build-host-commands). Run the
 [focused host and device matrix](regression-tests.md). Do not install the fixtures into the product

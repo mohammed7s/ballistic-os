@@ -59,9 +59,10 @@ Source and build contract: [assistant integration](assistant-integration.md). Th
 partition-dependency error during vendor helper preparation. Two appended packaging patches
 corrected it. The resumed build completed vendor preparation and reached Settings compilation;
 a third correction explicitly types the new switch callbacks. Compilation of the requested
-platform/library and test modules now passes. Host tests stopped before execution because their
-TradeFed launcher was missing; dependency building is enabled in the resumed command. Complete
-image packaging, ordinary fixture APK builds and device execution remain pending. See the
+platform/library and test modules and full unsigned OS packaging now pass as `2026112100`.
+Focused Settings host tests passed 14 cases, with 3 assumption skips and no failures. The separate
+fixture build needs a Soong defaults correction. Signing, delivery and device execution remain
+pending; see the [unsigned image record](log/2026-11-22-unsigned-image.md). See the
 [cloud build record](log/2026-11-21-cloud-build-fixes.md). A lightweight public-SDK javac contract check passed; clean
 application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).
 At this pin, EnhancedConfirmationService does not protect assistant role selection; no bypass
@@ -73,7 +74,8 @@ The source tag is `2026110200`. The eleven-patch snapshot recorded at recipe com
 (patch contents from reviewed `d02b997`) built as `2026110700`. The pre-extension eight-patch series
 had the same final source apart from removed licence comments; it was not compiled itself.
 The current fifteen-patch series adds the installed-assistant extension. Its requested platform
-and test modules compiled on Contabo; complete image packaging and runtime tests remain pending.
+and test modules and unsigned image packages built on Contabo; host tests passed 14 cases with
+3 assumption skips. Signing and device validation remain pending.
 For that historical eleven-patch snapshot, compilation and signing passed. Focused Settings host
 tests passed 11 cases with 3 assumption skips; instrumentation package compilation did not mean
 its device tests ran.

@@ -45,11 +45,10 @@ default through `scripts/sync.sh`; there is no silently selected optional varian
 
 Clean patch application and a lightweight javac check of the pinned public extension signature
 and fixture Java are recorded in the [new evidence](docs/log/2026-11-21-installed-assistants.md).
-The cloud build passed vendor preparation and compilation of the requested platform/library and
-test modules, including the actual public stubs, Settings and PermissionController. The focused
-host tests stopped before execution because their TradeFed launcher was missing; the resumed
-command builds that dependency. See the [build record](docs/log/2026-11-21-cloud-build-fixes.md).
-Test execution, complete image packaging, ordinary fixture APKs and device flow remain **unverified**.
+The full unsigned OS packages built successfully as `2026112100`. Focused Settings host tests:
+**14 passed, 0 failed, 3 assumption skips**. The actual wrapper/public stubs and instrumentation
+modules also compiled. Separate fixture APK compilation is being corrected; signing, delivery and
+device validation remain pending. See the [image record](docs/log/2026-11-22-unsigned-image.md).
 Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
 belong to the pre-extension series; they do not validate this change. This is not a release or a
 claim of GrapheneOS endorsement. See [validation](docs/regression-tests.md).
