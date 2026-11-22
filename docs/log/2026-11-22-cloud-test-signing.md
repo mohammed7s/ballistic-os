@@ -101,3 +101,25 @@ The temporary sleep inhibitor service is inactive after completion. ThinkPad fre
 69 GiB; earlier builds are retained. The VPS, source, unsigned outputs and signed target-files
 remain retained as requested. No phone command or flashing was performed. Installation choice,
 current device identity/boot checks and runtime regression validation remain separate next steps.
+
+## Connected-device precheck
+
+After the owner connected the Pixel and accepted USB debugging, a read-only check through
+ThinkPad ADB identified serial `56181FDCH0070R`, model Pixel 10 Pro, product/device `blazer`.
+Installed fingerprint: `google/blazer/blazer:17/CP3A.261005.005/2026110700:user/release-keys`.
+Build timestamp: `1794011628`; security patch: `2026-11-01`. Properties reported
+`ro.boot.flash.locked=1`, `ro.boot.vbmeta.device_state=locked`, and verified-boot state `yellow`.
+This establishes the previously installed modified build is booted, with a locked bootloader;
+it does not validate its Computer Control behavior. Battery was 30%, USB powered and charging.
+
+The phone's `/system/etc/security/otacerts.zip` was pulled to the new build's ThinkPad directory.
+Its trusted certificate's DER SHA-256 exactly matches both the new OTA's
+`META-INF/com/android/otacert` and the expected test release certificate:
+`6f1bb5d843798d7b0d9d8543baf8a27588a8c16664074fdbfeaf702a95e67c90`.
+
+OTA metadata: `ota-type=AB`, `pre-device=blazer`, target incremental `2026112100`,
+post-timestamp `1795267410`, SDK 37 and security patch `2026-11-01`. The timestamp is newer
+than the installed build and metadata requests no wipe. These checks support selecting the
+recovery OTA update path with the existing locked bootloader, subject to recovery's own checks.
+No reboot or update was issued during this precheck. Current installation/backup confirmation
+is requested before applying the update, per `docs/flashing.md`'s before-installation procedure.
