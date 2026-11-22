@@ -60,3 +60,25 @@ subdirectory and verifies the extracted AVB public key. Logs/status are `transfe
 
 The download job was observed active and waiting for the signed release. Both VPS and storage
 remain retained. Successful signing, completed download and device behavior are still pending.
+
+## Signing completed
+
+Signing finished at `2026-11-22T06:49:06Z`, exit 0 (46m48s from launch). The factory signature
+verified against the independently recorded existing factory signer, and the embedded AVB
+public key matched `9cffde575a2cad010e28e520879877126a1442dec0bd5b838adf616472ab4d9c`.
+The final temporary key store and workspace key symlink are absent. No upstream generate-release
+or decrypt-keys temporary directories remained in `/dev/shm` at the post-signing check.
+
+| Signed artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `blazer-install-2026112100.zip` | 2,222,724,167 | `07edf0a310e1cc1cd3df5d8eb2330d67dad73037d66e5c0c6b0f7e68aab05c32` |
+| `blazer-ota_update-2026112100.zip` | 1,760,497,133 | `087b854ad333d7af0f4643c58978f46be6d041b3e916af927d9e0b43b9ff13d7` |
+| `blazer-target_files.zip` | 5,228,887,413 | `025906331781e74fc048281cd6232ddb018b27b22b401d97c769e0ebd06dd16e` |
+
+The factory detached signature SHA-256 is
+`fbdd557f62c9cd985d06526d7abb3cd606b30aa847e904ad05de043af0c942a1`.
+Signed target-files remain in the separate cloud signing workspace for future update work.
+The install/OTA/public verification files and separate fixture APKs are published under
+`/srv/ballistic/publish/2026112100/`. The ThinkPad's automatic direct transfer started after
+publication and was observed receiving data, with initial speeds around 1–2 MB/s.
+Transfer verification and extraction are still pending; no phone command was issued.

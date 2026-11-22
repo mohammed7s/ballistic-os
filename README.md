@@ -47,8 +47,8 @@ Clean patch application and a lightweight javac check of the pinned public exten
 and fixture Java are recorded in the [new evidence](docs/log/2026-11-21-installed-assistants.md).
 The full unsigned OS packages built successfully as `2026112100`. Focused Settings host tests:
 **14 passed, 0 failed, 3 assumption skips**. The actual wrapper/public stubs and instrumentation
-modules also compiled. All three separate fixture APKs compiled and passed signature checks. Signing, delivery and
-device validation remain pending. See the [image record](docs/log/2026-11-22-unsigned-image.md).
+modules also compiled. All three separate fixture APKs compiled and passed signature checks. Release signing passed
+with the existing test identity; ThinkPad delivery and device validation remain pending. See the [image record](docs/log/2026-11-22-unsigned-image.md).
 Earlier compilation/signing/flashing and 11 Settings host passes with 3 skips
 belong to the pre-extension series; they do not validate this change. This is not a release or a
 claim of GrapheneOS endorsement. See [validation](docs/regression-tests.md).
