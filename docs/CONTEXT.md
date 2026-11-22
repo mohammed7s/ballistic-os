@@ -60,8 +60,8 @@ partition-dependency error during vendor helper preparation. Two appended packag
 corrected it. The resumed build completed vendor preparation and reached Settings compilation;
 a third correction explicitly types the new switch callbacks. Compilation of the requested
 platform/library and test modules and full unsigned OS packaging now pass as `2026112100`.
-Focused Settings host tests passed 14 cases, with 3 assumption skips and no failures. The separate
-fixture build needs a Soong defaults correction. Signing, delivery and device execution remain
+Focused Settings host tests passed 14 cases, with 3 assumption skips and no failures. The three separate
+fixture APKs compiled after a Soong defaults correction and passed signature checks. Signing, delivery and device execution remain
 pending; see the [unsigned image record](log/2026-11-22-unsigned-image.md). See the
 [cloud build record](log/2026-11-21-cloud-build-fixes.md). A lightweight public-SDK javac contract check passed; clean
 application and source identities are in [the dated record](log/2026-11-21-installed-assistants.md).

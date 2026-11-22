@@ -6,7 +6,8 @@ privapp allowlist, root, `pm grant`, shell identity, or `testOnly` flag is invol
 The source and fixture Java contract are checked. Cloud compilation now passed for the actual
 wrapper/public stubs, Settings, PermissionController, consent app and requested platform test
 modules after the recorded corrections. Full unsigned image packaging and the focused host tests passed (14 passed, 3 assumption skips).
-Ordinary fixture APK builds, signing and device behavior remain pending; see the
+All three ordinary fixture APKs compiled and passed signature/manifest checks. Release signing
+and device behavior remain pending; see the
 [image record](log/2026-11-22-unsigned-image.md). See the
 [cloud build log](log/2026-11-21-cloud-build-fixes.md) and
 [source evidence](log/2026-11-21-installed-assistants.md).
