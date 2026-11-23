@@ -43,8 +43,10 @@ and reports Computer Control packaging enabled. Resume 2 exited 0 at 05:46:51 UT
 ThinkPad completed with a matching SHA-256. Extraction completed and the visible, separate
 `BallisticControlApi37` AVD booted as API 37/build `2026112200`. The extension feature/library,
 normal APK installation and assistant-role permission grant were verified. Settings showed fresh
-automation switches off. Simulated test authentication subsequently completed; session
-consent/tree/input/revocation remain untested amid repeated SSH interruptions;
+automation switches off. Simulated test authentication and normal Clock target consent subsequently
+completed. The app's test fixture created a session, read Clock's tree and selected its Stopwatch
+tab through session input, then rejected input after session closure. Full OS revocation and
+protected-target enforcement are still untested; this is not an AI task-success score.
 see [build evidence and live log paths](log/2026-11-22-emulator-build.md). The SDK emulator target
 is for development, not a supported GrapheneOS device release.
 The first two attempts stopped in bootstrap/analysis because the separate absolute external

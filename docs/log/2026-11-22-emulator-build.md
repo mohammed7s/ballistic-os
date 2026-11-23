@@ -144,6 +144,14 @@ enrollment, app onboarding and notification permission. App policy/target consen
 SSH timed out again at 08:17 UTC. The original AVD and phone were unchanged. Detailed app evidence is in
 `ballistic/docs/log/2026-11-23-computer-control-emulator.md`.
 
+Later on 23 November, the app session completed Clock policy/normal target consent and created an
+active session. Its separate test-APK fixture passed session creation, Clock tree acquisition,
+Stopwatch tab tap/readback, app-adapter non-target refusal, and input rejection after closure
+(including a retained session reference). Six fixture checks, 9.57 seconds, no model calls.
+The model-driven pilot itself stopped before actions because Gemini Pro returned HTTP 429 with
+zero free-tier quota. No broad agent success score, full app Stop or OS revocation result is claimed.
+Details: `ballistic/docs/log/2026-11-23-computer-control-pilot.md`.
+
 Remaining runtime work: use the already booted,
 visible SDK emulator, retaining `AndroidWorldAvd` and running only one virtual device at a time.
 Verify the actual runtime flags, shared library, owner Settings flow, assistant role, target
