@@ -8,7 +8,9 @@ inside the session active callback. The client published its callback before cre
 Appended frameworks/base patch 0009 corrects that order and adds an early-callback regression test;
 the recipe now has sixteen patches. Clean application, exact-prefix rerun and dirty-tree refusal
 passed for all five projects. The matching incremental emulator build `2026112300` started on
-Contabo at 11:06:17 UTC; build, regression execution and runtime recheck remain pending. No Pixel
+Contabo at 11:06:17 UTC and completed at 11:26:22 UTC (reported build duration 19:09). Transfer of
+the build artifact stopped when ThinkPad SSH disconnected; the partial ZIP is unverified.
+Delivery, regression execution and runtime recheck remain pending. No Pixel
 image or phone change is part of this fix. See [the race record](log/2026-11-23-accessibility-proxy-race.md).
 
 ## Scope

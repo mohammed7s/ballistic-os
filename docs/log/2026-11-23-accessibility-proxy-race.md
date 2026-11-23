@@ -56,6 +56,25 @@ output `out-emulator-20261122`. No clean operation; Pixel `out/` is untouched. T
 - Log: `/srv/ballistic/logs/emulator-2026112300-proxy-fix.log`.
 - Exit marker: `/srv/ballistic/logs/emulator-2026112300-proxy-fix.exit`.
 
-Build is in progress. Image checksum, delivery, boot and repeated cold/warm session checks are
-pending. Compilation alone will not establish that the runtime failure is resolved. Full Stop,
-OS revocation and sensitive-action approvals remain separate validation work.
+Build completed successfully at 11:26:22 UTC, exit 0, with reported build duration 19:09.
+The final graph completed 686 actions; Ninja's displayed remaining-time estimate was inaccurate.
+Packaged wrapper/XML checks passed. ZIP size: 1,525,471,386 bytes. SHA-256:
+`f7b9d36d8500603d89f2daf46326f29cdaff90fc42be35baceae9bf8bc71d03e`.
+
+Transfer to a separate ThinkPad `~/ballistic-images/emulator-2026112300/` began after connectivity
+returned, preserving the old image and AVD userdata. The receiver last reported 28,311,552 bytes
+in `sdk-repo-linux-system-images.zip.part` at 11:28:40 UTC. SSH then stopped responding and the
+transfer exited 255; two Tailscale pings also timed out. The final partial-file length is unknown.
+Do not treat the partial file as verified or restart extraction. Resume only after inspecting it
+and checking no transfer writer is still active; require the full expected SHA-256 before use.
+Delivery/checksum verification, boot and repeated cold/warm session checks remain pending.
+The original APK and policy are retained. A non-root sleep inhibitor was denied; an attempt to
+start a bounded two-hour inhibitor through existing passwordless sudo lost its SSH connection,
+so whether that unit started is unknown. Unit name: `ballistic-emulator-inhibit-20261123`.
+
+The separate `FrameworksCoreTests` module compilation was started in the same dedicated emulator
+output after the image job finished. Unit `ballistic-proxy-regression-20261123.service`; runner
+`/srv/ballistic/build-proxy-regression-20261123.sh`; log and exit marker
+`/srv/ballistic/logs/emulator-2026112300-proxy-regression.{log,exit}`. This build does not mean
+the regression test has run. Compilation alone will not establish that the runtime failure is
+resolved. Full Stop, OS revocation and sensitive-action approvals remain separate validation work.

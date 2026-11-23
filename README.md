@@ -39,8 +39,8 @@ assistant's policy; apps remain free to recognize or reject automation.
 ## Patches and status
 
 **23 November 2026:** a sixteenth patch fixes an accessibility-proxy initialization race reproduced
-by the app's model-free emulator fixture. Clean patch application checks pass; its incremental
-emulator image build and runtime validation are pending. This does not update the Pixel image.
+by the app's model-free emulator fixture. Clean patch application and incremental emulator image
+compilation pass; runtime validation is pending. This does not update the Pixel image.
 See [the race record](docs/log/2026-11-23-accessibility-proxy-race.md).
 
 **21 November 2026:** fifteen patches in five repositories, against GrapheneOS tag `2026110200`.
