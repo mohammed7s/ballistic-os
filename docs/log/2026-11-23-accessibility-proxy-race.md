@@ -32,7 +32,8 @@ platform hardening change. The preceding fifteen patches are unchanged.
 
 Added `ComputerControlSessionTest.initialize_activeCallbackBeforeReturn_registersNonNullProxy`,
 which invokes the callback inline during initialize and requires a non-null proxy registration.
-This regression source has not yet been compiled or executed; do not report it as passing.
+This regression source compiled in `FrameworksCoreTests` (completion below), but has not been
+executed; do not report it as passing.
 
 `python3 scripts/verify-patches.py /home/wakeel/src/ballistic-os-work` passed clean git-am,
 exact-prefix idempotence and dirty-tree refusal for all five repositories. Final frameworks/base
@@ -78,3 +79,12 @@ output after the image job finished. Unit `ballistic-proxy-regression-20261123.s
 `/srv/ballistic/logs/emulator-2026112300-proxy-regression.{log,exit}`. This build does not mean
 the regression test has run. Compilation alone will not establish that the runtime failure is
 resolved. Full Stop, OS revocation and sensitive-action approvals remain separate validation work.
+
+The regression module build completed at 11:49:09 UTC, exit 0, with reported build duration
+20:17 and 4,659 completed actions. APK:
+`/srv/ballistic/gos/out-emulator-20261122/target/product/emu64x/testcases/FrameworksCoreTests/x86_64/FrameworksCoreTests.apk`.
+Size: 44,387,362 bytes. SHA-256:
+`002be88bb9b1032cb6d36112410d4bca862f1067b51868846e88c7e523157450`.
+The next ThinkPad SSH attempt still timed out. Neither the repaired image nor this test package
+has been installed there, and the test method has not run. No further OS compilation is needed
+for the planned runtime checks unless they reveal another defect.

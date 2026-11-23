@@ -10,7 +10,8 @@ the recipe now has sixteen patches. Clean application, exact-prefix rerun and di
 passed for all five projects. The matching incremental emulator build `2026112300` started on
 Contabo at 11:06:17 UTC and completed at 11:26:22 UTC (reported build duration 19:09). Transfer of
 the build artifact stopped when ThinkPad SSH disconnected; the partial ZIP is unverified.
-Delivery, regression execution and runtime recheck remain pending. No Pixel
+The regression-test APK also compiled successfully at 11:49:09 UTC (20:17 build duration), but
+has not run. ThinkPad SSH still times out. Delivery, regression execution and runtime recheck remain pending. No Pixel
 image or phone change is part of this fix. See [the race record](log/2026-11-23-accessibility-proxy-race.md).
 
 ## Scope
