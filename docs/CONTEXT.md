@@ -3,6 +3,14 @@
 Updated 21 November 2026. This is the handoff for the platform repository. App decisions and
 agent development belong in [Ballistic](https://github.com/mohammed7s/ballistic).
 
+**23 November follow-up:** a zero-model emulator fixture reproduced a null accessibility proxy
+inside the session active callback. The client published its callback before creating the proxy.
+Appended frameworks/base patch 0009 corrects that order and adds an early-callback regression test;
+the recipe now has sixteen patches. Clean application, exact-prefix rerun and dirty-tree refusal
+passed for all five projects. The matching incremental emulator build `2026112300` started on
+Contabo at 11:06:17 UTC; build, regression execution and runtime recheck remain pending. No Pixel
+image or phone change is part of this fix. See [the race record](log/2026-11-23-accessibility-proxy-race.md).
+
 ## Scope
 
 Build GrapheneOS from the tag in MANIFEST plus readable `git format-patch` files. Keep changes

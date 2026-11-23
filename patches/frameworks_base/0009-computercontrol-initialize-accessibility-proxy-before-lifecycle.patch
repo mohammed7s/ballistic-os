@@ -1,0 +1,70 @@
+From c70f7dd3a02d46cff739ce85bfe12bd30fec2392 Mon Sep 17 00:00:00 2001
+From: Mohammed <91819504+mohammed7s@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 14:02:20 +0300
+Subject: [PATCH] computercontrol: initialize accessibility proxy before
+ lifecycle registration
+
+An inline or fast remote onActive callback can otherwise register a null display proxy and leave an active session without accessibility windows.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../ComputerControlSession.java               |  5 +++--
+ .../ComputerControlSessionTest.java           | 21 +++++++++++++++++++
+ 2 files changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/core/java/android/companion/virtual/computercontrol/ComputerControlSession.java b/core/java/android/companion/virtual/computercontrol/ComputerControlSession.java
+index e1abf841b..0af137cd2 100644
+--- a/core/java/android/companion/virtual/computercontrol/ComputerControlSession.java
++++ b/core/java/android/companion/virtual/computercontrol/ComputerControlSession.java
+@@ -355,13 +355,14 @@ public final class ComputerControlSession implements AutoCloseable {
+                 displayInfo.logicalHeight,
+                 PixelFormat.RGBA_8888, /* maxImages= */ 2);
+         mImageReader.setOnImageAvailableListener(reader -> onImageAvailable(), mHandler);
++        // initialize() can deliver lifecycle callbacks before its Binder call returns. Those
++        // callbacks register/unregister the proxy, so create it before publishing the callback.
++        mAccessibilityProxy = new ComputerControlAccessibilityProxy(displayId, mHandler);
+         try {
+             mSession.initialize(mRemoteLifecycleCallback, mImageReader.getSurface());
+         } catch (RemoteException e) {
+             e.rethrowFromSystemServer();
+         }
+-
+-        mAccessibilityProxy = new ComputerControlAccessibilityProxy(displayId, mHandler);
+     }
+ 
+     /**
+diff --git a/core/tests/coretests/src/android/companion/virtual/computercontrol/ComputerControlSessionTest.java b/core/tests/coretests/src/android/companion/virtual/computercontrol/ComputerControlSessionTest.java
+index dbb9cfdd1..076d35bc8 100644
+--- a/core/tests/coretests/src/android/companion/virtual/computercontrol/ComputerControlSessionTest.java
++++ b/core/tests/coretests/src/android/companion/virtual/computercontrol/ComputerControlSessionTest.java
+@@ -126,6 +126,27 @@ public class ComputerControlSessionTest {
+         mMockitoSession.close();
+     }
+ 
++    @Test
++    public void initialize_activeCallbackBeforeReturn_registersNonNullProxy() throws Exception {
++        final IComputerControlSession earlySession = Mockito.mock(IComputerControlSession.class);
++        final IComputerControlLifecycleCallback[] earlyCallback =
++                new IComputerControlLifecycleCallback[1];
++        Mockito.doAnswer(invocation -> {
++            earlyCallback[0] = invocation.getArgument(0);
++            earlyCallback[0].onActive();
++            return null;
++        }).when(earlySession).initialize(any(), any());
++        try {
++            new ComputerControlSession(DISPLAY_ID, earlySession, mA11yManager,
++                    mMockOnClosedRunnable, new DisplayManagerGlobal(mDisplayManager));
++            verify(mA11yManager).registerDisplayProxy(notNull());
++        } finally {
++            if (earlyCallback[0] != null) {
++                earlyCallback[0].onClosed(ComputerControlSession.CLOSE_REASON_CALLER_INITIATED);
++            }
++        }
++    }
++
+     @Test
+     public void performAction_performsAction() throws RemoteException {
+         mSession.performAction(ComputerControlSession.ACTION_GO_BACK);
+-- 
+2.53.0
+
