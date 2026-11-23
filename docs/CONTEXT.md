@@ -36,15 +36,16 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 
 ## Installed-assistant extension, 21 November 2026
 
-**22 November: separate emulator build started.** The owner authorized the app session to use
+**23 November: separate emulator build completed.** The owner authorized the app session to use
 Contabo for this build. The existing patched source accepts `sdk_phone64_x86_64-cur-userdebug`
-and reports Computer Control packaging enabled. A persistent build job uses a separate output
-directory, preserving Pixel artifacts. Image compilation, boot and runtime validation are pending;
+and reports Computer Control packaging enabled. Resume 2 exited 0 at 05:46:51 UTC, completing
+162,044 build actions in 12:23:10. The image ZIP and wrapper/XML checks passed; transfer to the
+ThinkPad has started. Boot and runtime validation are pending;
 see [build evidence and live log paths](log/2026-11-22-emulator-build.md). The SDK emulator target
 is for development, not a supported GrapheneOS device release.
 The first two attempts stopped in bootstrap/analysis because the separate absolute external
 output path was not supported by build-tool/module rules. Resume 2 uses a dedicated
-source-relative `out-emulator-20261122`, leaving Pixel `out/` intact. No image exists yet.
+source-relative `out-emulator-20261122`, leaving Pixel `out/` intact.
 
 The authorized extension is implemented as four extension patches plus three build fixes (fifteen total, five repositories).
 `ACCESS_COMPUTER_CONTROL` is now `internal|privileged|role`; PermissionController grants it only

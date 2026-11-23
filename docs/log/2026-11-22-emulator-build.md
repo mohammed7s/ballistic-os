@@ -91,6 +91,19 @@ build result. No compatible image has booted and no Computer Control session has
 
 ## Delivery and runtime work remaining
 
+**23 November, build complete:** resume 2 exited 0 at `2026-11-23T05:46:51Z`.
+The build reported `12:23:10` and completed all 162,044 actions. The recipe's wrapper/XML
+installation checks passed and it recorded this image SHA-256:
+`d2a2771f89154a706e55dea54bdf6b6e383a33863ffc608f82ff23a7a47ff9d1`.
+Artifact: `/srv/ballistic/gos/out-emulator-20261122/target/product/emu64x/sdk-repo-linux-system-images.zip`
+(approximately 1.5 GiB). This supersedes earlier statements that compilation is pending.
+
+At 06:44 UTC the ThinkPad was reachable, had 64 GiB free and no emulator process. Transfer was
+started over SSH through the Latitude into
+`~/ballistic-images/emulator-2026112200/sdk-repo-linux-system-images.zip.part` on the ThinkPad.
+The receiver checks the expected SHA-256 before renaming to the final ZIP. Completion, boot,
+owner setup and live Computer Control checks remain pending. No SSH private key was copied.
+
 After successful compilation, transfer and hash-check the image on the ThinkPad. Use a new,
 visible SDK emulator, retaining `AndroidWorldAvd` and running only one virtual device at a time.
 Verify the actual runtime flags, shared library, owner Settings flow, assistant role, target
