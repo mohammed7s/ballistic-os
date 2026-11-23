@@ -122,9 +122,31 @@ The existing APK and separately built instrumentation APK remain in `~/ballistic
 Owner was asked to keep the ThinkPad awake and connected. Boot, owner setup and Computer Control
 execution remain pending; no new runtime result is claimed.
 
-After successful compilation, transfer and hash-check the image on the ThinkPad. Use a new,
+## Boot verified, 23 November
+
+After connectivity returned, extraction completed with exit 0 and the expected system-image size.
+The separate visible AVD booted on display `:1`, serial `emulator-5554`, using emulator 37.2.13.
+`sys.boot_completed=1`, SDK 37 and hardware `ranchu` were verified. OS fingerprint:
+`Android/sdk_phone64_x86_64/emu64x:17/CP2A.260605.016/2026112200:userdebug/test-keys`.
+Both the feature and library lists expose `com.android.extensions.computercontrol`.
+
+The ordinary assistant APK and matching instrumentation APK installed. Selecting the app through
+the normal digital-assistant UI granted its requested Computer Control permission with
+`GRANTED_BY_ROLE`. Screen automation opened and all fresh assistant/target switches were off.
+Test setup tapped the assistant and Clock switches; persisted state still requires checking.
+No shell grant or privileged installation was used. Test PIN setup reached the lock-screen
+notification page; fingerprint enrollment, app policy and target consent remain unfinished.
+These simulated emulator setup actions do not validate physical biometric authentication.
+
+SSH dropped again around 07:33 UTC. Boot is verified; no session/tree/input/Stop/revocation result
+is claimed. Connectivity recovered at 07:36 UTC and allowed completion of simulated fingerprint
+enrollment, app onboarding and notification permission. App policy/target consent remain pending;
+SSH timed out again at 08:17 UTC. The original AVD and phone were unchanged. Detailed app evidence is in
+`ballistic/docs/log/2026-11-23-computer-control-emulator.md`.
+
+Remaining runtime work: use the already booted,
 visible SDK emulator, retaining `AndroidWorldAvd` and running only one virtual device at a time.
 Verify the actual runtime flags, shared library, owner Settings flow, assistant role, target
-consent, UI tree, input, Stop and revocation. Install the APK and its separately built emulator
-test driver with the same signer. AndroidWorld API-37 setup/checker compatibility and protected
+consent, UI tree, input, Stop and revocation with the installed matching APKs.
+AndroidWorld API-37 setup/checker compatibility and protected
 task classification remain app-harness work; an image build alone does not establish suite readiness.
