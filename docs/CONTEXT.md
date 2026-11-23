@@ -40,7 +40,8 @@ keystore, verified-boot enforcement, attestation or GrapheneOS hardening is inte
 Contabo for this build. The existing patched source accepts `sdk_phone64_x86_64-cur-userdebug`
 and reports Computer Control packaging enabled. Resume 2 exited 0 at 05:46:51 UTC, completing
 162,044 build actions in 12:23:10. The image ZIP and wrapper/XML checks passed; transfer to the
-ThinkPad has started. Boot and runtime validation are pending;
+ThinkPad completed with a matching SHA-256. Extraction and a separate AVD setup were started;
+SSH then became unavailable, so extraction completion, boot and runtime validation are pending;
 see [build evidence and live log paths](log/2026-11-22-emulator-build.md). The SDK emulator target
 is for development, not a supported GrapheneOS device release.
 The first two attempts stopped in bootstrap/analysis because the separate absolute external

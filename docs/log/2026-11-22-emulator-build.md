@@ -101,8 +101,26 @@ Artifact: `/srv/ballistic/gos/out-emulator-20261122/target/product/emu64x/sdk-re
 At 06:44 UTC the ThinkPad was reachable, had 64 GiB free and no emulator process. Transfer was
 started over SSH through the Latitude into
 `~/ballistic-images/emulator-2026112200/sdk-repo-linux-system-images.zip.part` on the ThinkPad.
-The receiver checks the expected SHA-256 before renaming to the final ZIP. Completion, boot,
-owner setup and live Computer Control checks remain pending. No SSH private key was copied.
+The receiver checked the expected SHA-256 successfully and renamed to the final ZIP at
+approximately 07:01 UTC on 23 November. No SSH private key was copied.
+
+## ThinkPad setup, 23 November
+
+The image archive contains 20 entries under `x86_64/`, totaling 8,777,127,087 uncompressed bytes.
+Extraction was started in the same directory. The last observed `system.img` was still growing
+(2.9 GiB of the expected 8,601,468,928 bytes); the unzip process was active. Extraction completion
+has not been verified because SSH subsequently stopped responding over both Tailscale and the
+reported local-network address. Do not rerun unzip over a potentially active extraction: inspect
+the process and resulting files first. Archive transfer/checksum verification is complete.
+
+KVM acceleration passed its check. A separate `BallisticControlApi37` AVD was created under
+`~/.android/avd/`, retaining `AndroidWorldAvd`. It uses the extracted absolute image directory,
+four virtual CPUs, 4 GiB RAM, its own 8 GiB userdata, host GPU and cold boot without snapshots.
+The desktop was available on display `:1` with GDM Xauthority. No emulator was started before
+the connection interruption, and no phone was attached in the observed ADB device list.
+The existing APK and separately built instrumentation APK remain in `~/ballistic_cc_20261122`.
+Owner was asked to keep the ThinkPad awake and connected. Boot, owner setup and Computer Control
+execution remain pending; no new runtime result is claimed.
 
 After successful compilation, transfer and hash-check the image on the ThinkPad. Use a new,
 visible SDK emulator, retaining `AndroidWorldAvd` and running only one virtual device at a time.
